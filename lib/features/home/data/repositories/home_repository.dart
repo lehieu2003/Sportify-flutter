@@ -71,8 +71,10 @@ class HomeRepository implements HomeTracksRepository {
       title: (json['title'] as String?)?.trim().isNotEmpty == true
           ? json['title'] as String
           : 'Untitled track',
-      artist: 'Artist #$id',
-      thumbnailUrl: 'https://picsum.photos/seed/sportify-$id/200/200',
+      artist: (json['artist'] as String?)?.trim().isNotEmpty == true
+          ? json['artist'] as String
+          : 'Unknown artist',
+      thumbnailUrl: json['coverUrl'] as String? ?? '',
     );
   }
 }

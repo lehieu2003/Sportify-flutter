@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 
+import '../../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'app_shell.dart';
 import 'auth_layout.dart';
 
@@ -12,46 +13,33 @@ class AppGate extends StatefulWidget {
 }
 
 class _AppGateState extends State<AppGate> {
-  static const _loggedInKey = 'auth.is_logged_in';
-
-  bool _isBootstrapping = true;
-  bool _isLoggedIn = false;
-
   @override
   void initState() {
     super.initState();
-    bootstrap();
-  }
-
-  Future<void> bootstrap() async {
-    final prefs = await SharedPreferences.getInstance();
-    final restoredLoggedIn = prefs.getBool(_loggedInKey) ?? false;
-    if (!mounted) return;
-    setState(() {
-      _isLoggedIn = restoredLoggedIn;
-      _isBootstrapping = false;
-    });
-  }
-
-  Future<void> _setAuth(bool isLoggedIn) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_loggedInKey, isLoggedIn);
-    if (!mounted) return;
-    setState(() {
-      _isLoggedIn = isLoggedIn;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthViewModel>().bootstrap();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isBootstrapping) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return Consumer<AuthViewModel>(
+      builder: (context, authVm, _) {
+        final state = authVm.state;
 
-    if (_isLoggedIn) {
-      return MainLayout(onLogout: () => _setAuth(false));
-    }
+        if (state.isBootstrapping) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    return AuthLayout(onLoginSuccess: () => _setAuth(true));
+        if (state.isAuthenticated) {
+          return MainLayout(onLogout: authVm.signout);
+        }
+
+        return const AuthLayout();
+      },
+    );
   }
 }
