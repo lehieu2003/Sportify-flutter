@@ -1,0 +1,66 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/theme/sportify_theme.dart';
+import '../models/home_media_item.dart';
+import 'artwork_box.dart';
+
+class QuickAccessGrid extends StatelessWidget {
+  const QuickAccessGrid({super.key, required this.items});
+
+  final List<HomeMediaItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: SportifySpacing.md),
+      child: GridView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        itemCount: items.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: SportifySpacing.sm,
+          mainAxisSpacing: SportifySpacing.sm,
+          childAspectRatio: 2.8,
+        ),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return Container(
+            decoration: BoxDecoration(
+              color: SportifyColors.card,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: <Widget>[
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    bottomLeft: Radius.circular(10),
+                  ),
+                  child: ArtworkBox(
+                    seed: item.title,
+                    size: 52,
+                    borderRadius: 0,
+                  ),
+                ),
+                const SizedBox(width: SportifySpacing.sm),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: SportifyColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: SportifySpacing.sm),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

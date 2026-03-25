@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/models/track.dart';
-import '../viewmodels/home_view_model.dart';
+import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../../core/theme/sportify_theme.dart';
+import '../data/home_fake_data.dart';
+import '../widgets/home_header.dart';
+import '../widgets/home_skeleton.dart';
+import '../widgets/horizontal_music_section.dart';
+import '../widgets/quick_access_grid.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,102 +17,85 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeViewModel>().loadTrendingTracks();
+    _simulateInitialLoad();
+  }
+
+  Future<void> _simulateInitialLoad() async {
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      child: Consumer<HomeViewModel>(
-        builder: (context, vm, _) {
-          final state = vm.state;
-
-          if (state.isLoading && state.tracks.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state.errorMessage != null && state.tracks.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(state.errorMessage!, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: vm.loadTrendingTracks,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: vm.loadTrendingTracks,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isTablet = constraints.maxWidth >= 700;
-                if (isTablet) {
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 3.3,
-                        ),
-                    itemCount: state.tracks.length,
-                    itemBuilder: (context, index) {
-                      final track = state.tracks[index];
-                      return _TrackTile(track: track);
-                    },
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: state.tracks.length,
-                  itemBuilder: (context, index) {
-                    final track = state.tracks[index];
-                    return _TrackTile(track: track);
-                  },
-                );
-              },
-            ),
-          );
-        },
-      ),
-    );
+  Future<void> _onRefresh() async {
+    setState(() {
+      _isLoading = true;
+    });
+    await _simulateInitialLoad();
   }
-}
-
-class _TrackTile extends StatelessWidget {
-  const _TrackTile({required this.track});
-
-  final Track track;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = track.thumbnailUrl;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundImage: imageUrl.isEmpty ? null : NetworkImage(imageUrl),
-        child: imageUrl.isEmpty ? const Icon(Icons.music_note) : null,
-      ),
-      title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        track.artist,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+    final userName = context.select<AuthViewModel?, String?>(
+      (vm) => vm?.state.user?.fullName,
+    );
+
+    if (_isLoading) {
+      return const HomeSkeleton();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      child: CustomScrollView(
+        slivers: <Widget>[
+          SliverToBoxAdapter(child: HomeHeader(userName: userName)),
+          const SliverToBoxAdapter(
+            child: QuickAccessGrid(items: HomeFakeData.quickAccess),
+          ),
+          const SliverToBoxAdapter(
+            child: HorizontalMusicSection(
+              title: 'Recently Played',
+              items: HomeFakeData.recentlyPlayed,
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: HorizontalMusicSection(
+              title: 'Made For You',
+              items: HomeFakeData.madeForYou,
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: HorizontalMusicSection(
+              title: 'Popular / Trending',
+              items: HomeFakeData.trending,
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: HorizontalMusicSection(
+              title: 'Based on your listening',
+              items: HomeFakeData.basedOnListening,
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: HorizontalMusicSection(
+              title: 'New Releases',
+              items: HomeFakeData.newReleases,
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: HorizontalMusicSection(
+              title: 'Genres / Moods',
+              items: HomeFakeData.genres,
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: SportifySpacing.xl)),
+        ],
       ),
     );
   }
