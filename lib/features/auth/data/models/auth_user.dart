@@ -12,10 +12,17 @@ class AuthUser {
   final String imageUrl;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
+    final rawId = json['id'];
+    final parsedId = switch (rawId) {
+      int value => value,
+      String value => int.tryParse(value) ?? 0,
+      _ => 0,
+    };
+
     return AuthUser(
-      id: json['id'] as int,
-      fullName: (json['full_name'] ?? json['fullName']) as String,
-      email: json['email'] as String,
+      id: parsedId,
+      fullName: (json['full_name'] ?? json['fullName'] ?? '') as String,
+      email: (json['email'] ?? '') as String,
       imageUrl: (json['image_url'] ?? json['imageUrl'] ?? '') as String,
     );
   }
