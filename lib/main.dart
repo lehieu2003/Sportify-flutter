@@ -8,9 +8,15 @@ import 'core/network/authorized_http_client.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/data/services/auth_api_service.dart';
 import 'features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'features/catalog/data/repositories/catalog_repository.dart';
+import 'features/catalog/data/services/catalog_api_service.dart';
+import 'features/catalog/presentation/viewmodels/search_view_model.dart';
 import 'features/home/data/repositories/home_repository.dart';
 import 'features/home/data/services/home_api_service.dart';
 import 'features/home/presentation/viewmodels/home_view_model.dart';
+import 'features/library/data/repositories/library_repository.dart';
+import 'features/library/data/services/library_api_service.dart';
+import 'features/library/presentation/viewmodels/library_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +36,13 @@ Future<void> main() async {
   final authorizedClient = AuthorizedHttpClient(
     baseClient: httpClient,
     tokenProvider: authRepository.readAccessToken,
-    onUnauthorized: authViewModel.signout,
+    onUnauthorized: () async {
+      final refreshed = await authRepository.tryRefreshAccessToken();
+      if (!refreshed) {
+        await authViewModel.signout();
+      }
+      return refreshed;
+    },
   );
 
   final homeService = HomeApiService(authorizedClient);
@@ -40,8 +52,20 @@ Future<void> main() async {
     cacheStore: homeCache,
   );
   final homeViewModel = HomeViewModel(repository: homeRepository);
+  final catalogService = CatalogApiService(authorizedClient);
+  final catalogRepository = CatalogRepository(service: catalogService);
+  final searchViewModel = SearchViewModel(repository: catalogRepository);
+
+  final libraryService = LibraryApiService(authorizedClient);
+  final libraryRepository = LibraryRepository(service: libraryService);
+  final libraryViewModel = LibraryViewModel(repository: libraryRepository);
 
   runApp(
-    SportifyApp(homeViewModel: homeViewModel, authViewModel: authViewModel),
+    SportifyApp(
+      homeViewModel: homeViewModel,
+      authViewModel: authViewModel,
+      searchViewModel: searchViewModel,
+      libraryViewModel: libraryViewModel,
+    ),
   );
 }

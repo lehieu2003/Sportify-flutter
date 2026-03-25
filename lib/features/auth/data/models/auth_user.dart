@@ -4,26 +4,26 @@ class AuthUser {
     required this.fullName,
     required this.email,
     required this.imageUrl,
+    required this.role,
   });
 
-  final int id;
+  final String id;
   final String fullName;
   final String email;
   final String imageUrl;
+  final String role;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
-    final rawId = json['id'];
-    final parsedId = switch (rawId) {
-      int value => value,
-      String value => int.tryParse(value) ?? 0,
-      _ => 0,
-    };
-
+    final fullName = (json['full_name'] ?? json['fullName'] ?? '').toString();
+    final email = (json['email'] ?? '').toString();
+    final imageUrl = (json['image_url'] ?? json['imageUrl'] ?? '').toString();
+    final role = (json['role'] ?? 'user').toString();
     return AuthUser(
-      id: parsedId,
-      fullName: (json['full_name'] ?? json['fullName'] ?? '') as String,
-      email: (json['email'] ?? '') as String,
-      imageUrl: (json['image_url'] ?? json['imageUrl'] ?? '') as String,
+      id: (json['id'] ?? '').toString(),
+      fullName: fullName,
+      email: email,
+      imageUrl: imageUrl,
+      role: role,
     );
   }
 
@@ -33,6 +33,7 @@ class AuthUser {
       'full_name': fullName,
       'email': email,
       'image_url': imageUrl,
+      'role': role,
     };
   }
 }

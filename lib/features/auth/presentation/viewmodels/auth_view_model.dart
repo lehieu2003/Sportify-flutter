@@ -126,7 +126,19 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<void> signout() async {
-    await _repository.clearSession();
+    await _repository.signoutRemote();
+    _state = _state.copyWith(
+      isAuthenticated: false,
+      user: null,
+      errorMessage: null,
+      isSubmitting: false,
+      isBootstrapping: false,
+    );
+    notifyListeners();
+  }
+
+  Future<void> signoutAll() async {
+    await _repository.signoutAllRemote();
     _state = _state.copyWith(
       isAuthenticated: false,
       user: null,

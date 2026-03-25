@@ -1,15 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:provider/provider.dart';
+import 'package:sportify/features/home/data/models/home_feed.dart';
+import 'package:sportify/features/home/data/models/track.dart';
+import 'package:sportify/features/home/data/repositories/home_repository.dart';
 import 'package:sportify/features/home/presentation/views/home_screen.dart';
+import 'package:sportify/features/home/presentation/viewmodels/home_view_model.dart';
+
+class _FakeHomeRepository implements HomeTracksRepository {
+  @override
+  Stream<HomeFeed> watchHomeFeed() async* {
+    yield const HomeFeed(
+      quickAccess: <Track>[Track(id: '1', title: 'Liked Songs', subtitle: 'Library', thumbnailUrl: '')],
+      recentlyPlayed: <Track>[Track(id: '2', title: 'Recent 1', subtitle: 'Artist', thumbnailUrl: '')],
+      madeForYou: <Track>[Track(id: '3', title: 'Mix 1', subtitle: 'Artist', thumbnailUrl: '')],
+      trending: <Track>[Track(id: '4', title: 'Top 1', subtitle: 'Artist', thumbnailUrl: '')],
+      newReleases: <Track>[Track(id: '5', title: 'New 1', subtitle: 'Artist', thumbnailUrl: '')],
+      genres: <Track>[Track(id: '6', title: 'Pop', subtitle: '12 tracks', thumbnailUrl: '')],
+    );
+  }
+}
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('home screen shows core sections', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    final vm = HomeViewModel(repository: _FakeHomeRepository());
+    await tester.pumpWidget(
+      ChangeNotifierProvider<HomeViewModel>.value(
+        value: vm,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
 
-    await tester.pumpAndSettle(const Duration(milliseconds: 900));
+    await tester.pumpAndSettle();
 
     expect(find.text('Recently Played'), findsOneWidget);
     expect(find.text('Made For You'), findsOneWidget);

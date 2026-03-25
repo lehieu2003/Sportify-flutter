@@ -4,22 +4,19 @@ class AuthorizedHttpClient {
   AuthorizedHttpClient({
     required http.Client baseClient,
     required String? Function() tokenProvider,
-    Future<void> Function()? onUnauthorized,
+    Future<bool> Function()? onUnauthorized,
   }) : _baseClient = baseClient,
        _tokenProvider = tokenProvider,
        _onUnauthorized = onUnauthorized;
 
   final http.Client _baseClient;
   final String? Function() _tokenProvider;
-  final Future<void> Function()? _onUnauthorized;
+  final Future<bool> Function()? _onUnauthorized;
 
   bool _handlingUnauthorized = false;
 
   Future<http.Response> get(Uri uri, {Map<String, String>? headers}) async {
-    final mergedHeaders = _withAuthorization(headers);
-    final response = await _baseClient.get(uri, headers: mergedHeaders);
-    await _handleUnauthorized(response.statusCode);
-    return response;
+    return _send((requestHeaders) => _baseClient.get(uri, headers: requestHeaders), headers);
   }
 
   Future<http.Response> post(
@@ -27,14 +24,49 @@ class AuthorizedHttpClient {
     Map<String, String>? headers,
     Object? body,
   }) async {
-    final mergedHeaders = _withAuthorization(headers);
-    final response = await _baseClient.post(
-      uri,
-      headers: mergedHeaders,
-      body: body,
+    return _send(
+      (requestHeaders) => _baseClient.post(uri, headers: requestHeaders, body: body),
+      headers,
     );
-    await _handleUnauthorized(response.statusCode);
-    return response;
+  }
+
+  Future<http.Response> patch(
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
+    return _send(
+      (requestHeaders) => _baseClient.patch(uri, headers: requestHeaders, body: body),
+      headers,
+    );
+  }
+
+  Future<http.Response> delete(
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
+    return _send(
+      (requestHeaders) => _baseClient.delete(uri, headers: requestHeaders, body: body),
+      headers,
+    );
+  }
+
+  Future<http.Response> _send(
+    Future<http.Response> Function(Map<String, String> headers) sender,
+    Map<String, String>? headers,
+  ) async {
+    final firstResponse = await sender(_withAuthorization(headers));
+    if (firstResponse.statusCode != 401) {
+      return firstResponse;
+    }
+
+    final refreshed = await _handleUnauthorized();
+    if (!refreshed) {
+      return firstResponse;
+    }
+
+    return sender(_withAuthorization(headers));
   }
 
   Map<String, String> _withAuthorization(Map<String, String>? headers) {
@@ -46,13 +78,13 @@ class AuthorizedHttpClient {
     return merged;
   }
 
-  Future<void> _handleUnauthorized(int statusCode) async {
-    if (statusCode != 401 || _onUnauthorized == null || _handlingUnauthorized) {
-      return;
+  Future<bool> _handleUnauthorized() async {
+    if (_onUnauthorized == null || _handlingUnauthorized) {
+      return false;
     }
     _handlingUnauthorized = true;
     try {
-      await _onUnauthorized.call();
+      return await _onUnauthorized.call();
     } finally {
       _handlingUnauthorized = false;
     }

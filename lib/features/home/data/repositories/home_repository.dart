@@ -2,42 +2,39 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/home_feed.dart';
 import '../models/track.dart';
 import '../services/home_api_service.dart';
 
 abstract class HomeTracksRepository {
-  Stream<List<Track>> watchTrendingTracks();
+  Stream<HomeFeed> watchHomeFeed();
 }
 
 abstract class HomeCacheStore {
-  Future<List<Track>> readTracks();
-  Future<void> writeTracks(List<Track> tracks);
+  Future<HomeFeed> readFeed();
+  Future<void> writeFeed(HomeFeed feed);
 }
 
 class SharedPrefsHomeCacheStore implements HomeCacheStore {
   SharedPrefsHomeCacheStore(this._prefs);
 
-  static const _tracksKey = 'home.trending_tracks.v1';
+  static const _feedKey = 'home.feed.v2';
   final SharedPreferences _prefs;
 
   @override
-  Future<List<Track>> readTracks() async {
-    final raw = _prefs.getString(_tracksKey);
+  Future<HomeFeed> readFeed() async {
+    final raw = _prefs.getString(_feedKey);
     if (raw == null || raw.isEmpty) {
-      return const <Track>[];
+      return HomeFeed.empty();
     }
 
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .cast<Map<String, dynamic>>()
-        .map(Track.fromJson)
-        .toList(growable: false);
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    return HomeFeed.fromJson(decoded);
   }
 
   @override
-  Future<void> writeTracks(List<Track> tracks) async {
-    final payload = tracks.map((item) => item.toJson()).toList(growable: false);
-    await _prefs.setString(_tracksKey, jsonEncode(payload));
+  Future<void> writeFeed(HomeFeed feed) async {
+    await _prefs.setString(_feedKey, jsonEncode(feed.toJson()));
   }
 }
 
@@ -52,29 +49,44 @@ class HomeRepository implements HomeTracksRepository {
   final HomeCacheStore _cacheStore;
 
   @override
-  Stream<List<Track>> watchTrendingTracks() async* {
-    final localTracks = await _cacheStore.readTracks();
-    if (localTracks.isNotEmpty) {
-      yield localTracks;
+  Stream<HomeFeed> watchHomeFeed() async* {
+    final localFeed = await _cacheStore.readFeed();
+    if (localFeed.trending.isNotEmpty ||
+        localFeed.madeForYou.isNotEmpty ||
+        localFeed.recentlyPlayed.isNotEmpty) {
+      yield localFeed;
     }
 
-    final remoteRaw = await _service.fetchTrendingRaw();
-    final remoteTracks = remoteRaw.map(_mapRemoteTrack).toList(growable: false);
-    await _cacheStore.writeTracks(remoteTracks);
-    yield remoteTracks;
+    final payload = await _service.fetchHomePayload();
+    final remoteFeed = HomeFeed(
+      quickAccess: payload.quickAccess.map(_mapRemoteTrack).toList(growable: false),
+      recentlyPlayed: payload.recentlyPlayed.map(_mapRemoteTrack).toList(growable: false),
+      madeForYou: payload.madeForYou.map(_mapRemoteTrack).toList(growable: false),
+      trending: payload.trending.map(_mapRemoteTrack).toList(growable: false),
+      newReleases: payload.newReleases.map(_mapRemoteTrack).toList(growable: false),
+      genres: payload.genres.map(_mapRemoteGenre).toList(growable: false),
+    );
+    await _cacheStore.writeFeed(remoteFeed);
+    yield remoteFeed;
   }
 
   Track _mapRemoteTrack(Map<String, dynamic> json) {
-    final id = json['id'].toString();
+    final title = (json['title'] ?? '').toString();
     return Track(
-      id: id,
-      title: (json['title'] as String?)?.trim().isNotEmpty == true
-          ? json['title'] as String
-          : 'Untitled track',
-      artist: (json['artist'] as String?)?.trim().isNotEmpty == true
-          ? json['artist'] as String
-          : 'Unknown artist',
-      thumbnailUrl: json['coverUrl'] as String? ?? '',
+      id: json['id'].toString(),
+      title: title.trim().isNotEmpty ? title : 'Untitled track',
+      subtitle: (json['artist'] ?? json['artist_name'] ?? 'Unknown artist').toString(),
+      thumbnailUrl: (json['coverUrl'] ?? '').toString(),
+    );
+  }
+
+  Track _mapRemoteGenre(Map<String, dynamic> json) {
+    final name = (json['name'] ?? '').toString();
+    return Track(
+      id: (json['id'] ?? name).toString(),
+      title: name.isNotEmpty ? name : 'Genre',
+      subtitle: '${json['trackCount'] ?? json['track_count'] ?? 0} tracks',
+      thumbnailUrl: '',
     );
   }
 }
