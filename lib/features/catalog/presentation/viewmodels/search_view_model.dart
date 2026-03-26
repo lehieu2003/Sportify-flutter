@@ -66,6 +66,19 @@ class SearchViewModel extends ChangeNotifier {
 
   SearchUiState get state => _state;
 
+  Future<void> _upsertQueryRecent(String query) async {
+    final normalized = query.trim();
+    if (normalized.isEmpty) return;
+    try {
+      await _repository.upsertRecentSearch(
+        type: 'track',
+        itemId: 'query:${normalized.toLowerCase()}',
+        title: normalized,
+        subtitle: 'Search query',
+      );
+    } catch (_) {}
+  }
+
   Future<void> loadLanding() async {
     try {
       final results = await Future.wait<dynamic>(<Future<dynamic>>[
@@ -102,6 +115,47 @@ class SearchViewModel extends ChangeNotifier {
 
     try {
       final page = await _repository.searchTracks(query: query, limit: 20);
+      _state = _state.copyWith(
+        isLoading: false,
+        items: page.items,
+        nextCursor: page.nextCursor,
+        errorMessage: null,
+      );
+    } catch (_) {
+      _state = _state.copyWith(
+        isLoading: false,
+        items: const <CatalogTrack>[],
+        nextCursor: null,
+        errorMessage: 'Failed to search tracks.',
+      );
+    }
+    notifyListeners();
+  }
+
+  Future<void> submitQuery(String query) async {
+    final normalized = query.trim();
+    await search(normalized);
+    if (normalized.isEmpty) return;
+    await _upsertQueryRecent(normalized);
+    await loadLanding();
+  }
+
+  Future<void> searchByGenre(String genreSlug) async {
+    final normalized = genreSlug.trim();
+    if (normalized.isEmpty) return;
+    _state = _state.copyWith(
+      isLoading: true,
+      query: normalized,
+      items: const <CatalogTrack>[],
+      nextCursor: null,
+      errorMessage: null,
+    );
+    notifyListeners();
+    try {
+      final page = await _repository.searchTracks(
+        genre: normalized,
+        limit: 20,
+      );
       _state = _state.copyWith(
         isLoading: false,
         items: page.items,

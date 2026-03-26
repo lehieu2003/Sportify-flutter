@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../../core/navigation/content_deeplink_navigator.dart';
 import '../../../../core/theme/sportify_theme.dart';
-import '../../../catalog/presentation/views/album_detail_screen.dart';
 import '../models/home_media_item.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/home_skeleton.dart';
 import '../widgets/home_top_filters.dart';
 import '../widgets/horizontal_music_section.dart';
 import '../widgets/quick_access_grid.dart';
+import 'home_section_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,14 +39,26 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Album chưa có dữ liệu.')));
+      ).showSnackBar(const SnackBar(content: Text('Album unavailable.')));
       return;
     }
     if (!context.mounted) return;
-    Navigator.of(context).push(
+    await ContentDeeplinkNavigator.open(
+      context: context,
+      type: 'album',
+      id: albumId,
+      title: item.title,
+    );
+  }
+
+  Future<void> _openSection(BuildContext context, String title, List<HomeMediaItem> items) async {
+    if (items.isEmpty) return;
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            AlbumDetailScreen(albumId: albumId, initialTitle: item.title),
+        builder: (_) => HomeSectionListScreen(
+          title: title,
+          items: items,
+        ),
       ),
     );
   }
@@ -115,46 +128,56 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverToBoxAdapter(
                 child: HomeTopFilters(userInitial: userInitial),
               ),
-              SliverToBoxAdapter(
-                child: QuickAccessGrid(
-                  items: state.quickAccess,
-                  onItemTap: (item) => _openAlbum(context, item),
+              if (state.quickAccess.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: QuickAccessGrid(
+                    items: state.quickAccess,
+                    onItemTap: (item) => _openAlbum(context, item),
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: HorizontalMusicSection(
-                  title: 'Recently Played',
-                  items: state.recentlyPlayed,
-                  onItemTap: (item) => _openAlbum(context, item),
+              if (state.recentlyPlayed.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: HorizontalMusicSection(
+                    title: 'Recently Played',
+                    items: state.recentlyPlayed,
+                    onItemTap: (item) => _openAlbum(context, item),
+                    onSeeAll: () => _openSection(context, 'Recently Played', state.recentlyPlayed),
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: HorizontalMusicSection(
-                  title: 'Made For You',
-                  items: state.madeForYou,
-                  onItemTap: (item) => _openAlbum(context, item),
+              if (state.madeForYou.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: HorizontalMusicSection(
+                    title: 'Made For You',
+                    items: state.madeForYou,
+                    onItemTap: (item) => _openAlbum(context, item),
+                    onSeeAll: () => _openSection(context, 'Made For You', state.madeForYou),
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: HorizontalMusicSection(
-                  title: 'Popular / Trending',
-                  items: state.trending,
-                  onItemTap: (item) => _openAlbum(context, item),
+              if (state.trending.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: HorizontalMusicSection(
+                    title: 'Popular / Trending',
+                    items: state.trending,
+                    onItemTap: (item) => _openAlbum(context, item),
+                    onSeeAll: () => _openSection(context, 'Popular / Trending', state.trending),
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: HorizontalMusicSection(
-                  title: 'New Releases',
-                  items: state.newReleases,
-                  onItemTap: (item) => _openAlbum(context, item),
+              if (state.newReleases.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: HorizontalMusicSection(
+                    title: 'New Releases',
+                    items: state.newReleases,
+                    onItemTap: (item) => _openAlbum(context, item),
+                    onSeeAll: () => _openSection(context, 'New Releases', state.newReleases),
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: HorizontalMusicSection(
-                  title: 'Genres / Moods',
-                  items: state.genres,
+              if (state.genres.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: HorizontalMusicSection(
+                    title: 'Genres / Moods',
+                    items: state.genres,
+                  ),
                 ),
-              ),
               if (state.errorMessage != null)
                 SliverToBoxAdapter(
                   child: Padding(

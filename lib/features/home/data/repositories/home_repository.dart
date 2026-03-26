@@ -60,15 +60,22 @@ class HomeRepository implements HomeTracksRepository {
 
     final payload = await _service.fetchHomePayload();
     final remoteFeed = HomeFeed(
-      quickAccess: payload.quickAccess.map(_mapRemoteTrack).toList(growable: false),
-      recentlyPlayed: payload.recentlyPlayed.map(_mapRemoteTrack).toList(growable: false),
-      madeForYou: payload.madeForYou.map(_mapRemoteTrack).toList(growable: false),
-      trending: payload.trending.map(_mapRemoteTrack).toList(growable: false),
-      newReleases: payload.newReleases.map(_mapRemoteTrack).toList(growable: false),
+      quickAccess: _parseAlbumSection(payload.quickAccess),
+      recentlyPlayed: _parseAlbumSection(payload.recentlyPlayed),
+      madeForYou: _parseAlbumSection(payload.madeForYou),
+      trending: _parseAlbumSection(payload.trending),
+      newReleases: _parseAlbumSection(payload.newReleases),
       genres: payload.genres.map(_mapRemoteGenre).toList(growable: false),
     );
     await _cacheStore.writeFeed(remoteFeed);
     yield remoteFeed;
+  }
+
+  List<Track> _parseAlbumSection(List<Map<String, dynamic>> rows) {
+    return rows
+        .map(_mapRemoteTrack)
+        .where((track) => (track.albumId ?? '').trim().isNotEmpty)
+        .toList(growable: false);
   }
 
   Track _mapRemoteTrack(Map<String, dynamic> json) {

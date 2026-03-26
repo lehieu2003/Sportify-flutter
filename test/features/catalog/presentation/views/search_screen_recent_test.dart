@@ -30,6 +30,9 @@ class _FakeCatalogApiService extends CatalogApiService {
 class _FakeCatalogRepository extends CatalogRepository {
   _FakeCatalogRepository() : super(service: _FakeCatalogApiService());
 
+  String? lastGenreQuery;
+  String? lastTextQuery;
+
   @override
   Future<SearchBrowsePayload> getSearchBrowse() async {
     return const SearchBrowsePayload(
@@ -43,10 +46,10 @@ class _FakeCatalogRepository extends CatalogRepository {
       ],
       browseCategories: <SearchBrowseCard>[
         SearchBrowseCard(
-          title: 'Nhạc',
+          title: 'Pop',
           imageUrl: '',
           deeplinkType: 'genre',
-          deeplinkId: 'Pop',
+          deeplinkId: 'pop',
           colorHex: '#D84093',
         ),
       ],
@@ -157,6 +160,49 @@ class _FakeCatalogRepository extends CatalogRepository {
       nextCursor: null,
     );
   }
+
+  @override
+  Future<CatalogTracksPage> searchTracks({
+    String? query,
+    String? genre,
+    int limit = 20,
+    String? cursor,
+  }) async {
+    if (genre != null && genre.trim().isNotEmpty) {
+      lastGenreQuery = genre;
+      return const CatalogTracksPage(
+        items: <CatalogTrack>[
+          CatalogTrack(
+            id: 'genre-track-1',
+            title: 'Pop Hit',
+            artist: 'Pop Artist',
+            artistId: 'artist-1',
+            albumId: 'album-1',
+            albumTitle: 'Pop Album',
+            coverUrl: '',
+            audioUrl: '',
+          ),
+        ],
+        nextCursor: null,
+      );
+    }
+    lastTextQuery = query;
+    return const CatalogTracksPage(
+      items: <CatalogTrack>[
+        CatalogTrack(
+          id: 'query-track-1',
+          title: 'Query Result',
+          artist: 'Artist',
+          artistId: 'artist-1',
+          albumId: 'album-1',
+          albumTitle: 'Query Album',
+          coverUrl: '',
+          audioUrl: '',
+        ),
+      ],
+      nextCursor: null,
+    );
+  }
 }
 
 class _FakeLibraryApiService extends LibraryApiService {
@@ -258,8 +304,32 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Recent searches'), findsOneWidget);
+    expect(find.text('Discover fresh content'), findsOneWidget);
     expect(find.text('Recent Album'), findsOneWidget);
+  });
+
+  testWidgets('SearchScreen switches from landing mode to query mode and back', (tester) async {
+    final catalogRepository = _FakeCatalogRepository();
+    final vm = SearchViewModel(repository: catalogRepository);
+
+    await tester.pumpWidget(
+      _buildSearchApp(
+        vm: vm,
+        catalogRepository: catalogRepository,
+        libraryRepository: _FakeLibraryRepository(),
+        playlistRepository: _FakePlaylistRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discover fresh content'), findsOneWidget);
+    await tester.tap(find.text('What do you want to listen to?'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(find.text('Discover fresh content'), findsOneWidget);
   });
 
   testWidgets('SearchScreen opens album detail from discover card', (tester) async {
@@ -330,9 +400,41 @@ void main() {
       120,
       scrollable: listFinder,
     );
+    await tester.ensureVisible(find.text('Recent Playlist'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Recent Playlist'));
     await tester.pumpAndSettle();
 
     expect(find.text('Playlist Detail'), findsOneWidget);
+  });
+
+  testWidgets('SearchScreen handles genre deeplink from browse card', (tester) async {
+    final catalogRepository = _FakeCatalogRepository();
+    final vm = SearchViewModel(repository: catalogRepository);
+
+    await tester.pumpWidget(
+      _buildSearchApp(
+        vm: vm,
+        catalogRepository: catalogRepository,
+        libraryRepository: _FakeLibraryRepository(),
+        playlistRepository: _FakePlaylistRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final listFinder = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('Pop'),
+      120,
+      scrollable: listFinder,
+    );
+    await tester.ensureVisible(find.text('Pop').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pop').first);
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+    expect(find.text('Pop Hit'), findsOneWidget);
+    expect(catalogRepository.lastGenreQuery, 'pop');
   });
 }

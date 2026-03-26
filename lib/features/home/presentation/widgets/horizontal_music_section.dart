@@ -11,17 +11,25 @@ class HorizontalMusicSection extends StatelessWidget {
     required this.title,
     required this.items,
     this.onItemTap,
+    this.onSeeAll,
   });
 
   final String title;
   final List<HomeMediaItem> items;
   final ValueChanged<HomeMediaItem>? onItemTap;
+  final VoidCallback? onSeeAll;
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       children: <Widget>[
-        SectionHeader(title: title),
+        SectionHeader(
+          title: title,
+          onSeeAll: onSeeAll,
+        ),
         SizedBox(
           height: 210,
           child: ListView.separated(
