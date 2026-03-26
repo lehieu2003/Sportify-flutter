@@ -6,8 +6,8 @@ import '../../../../core/theme/sportify_theme.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
 import '../models/home_media_item.dart';
 import '../viewmodels/home_view_model.dart';
-import '../widgets/home_header.dart';
 import '../widgets/home_skeleton.dart';
+import '../widgets/home_top_filters.dart';
 import '../widgets/horizontal_music_section.dart';
 import '../widgets/quick_access_grid.dart';
 
@@ -91,6 +91,9 @@ class _HomeScreenState extends State<HomeScreen> {
       authVm = null;
     }
     final userName = authVm?.state.user?.fullName;
+    final userInitial = (userName != null && userName.trim().isNotEmpty)
+        ? userName.trim().substring(0, 1).toUpperCase()
+        : 'H';
 
     return Consumer<HomeViewModel>(
       builder: (context, vm, _) {
@@ -103,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onRefresh: _onRefresh,
           child: CustomScrollView(
             slivers: <Widget>[
-              SliverToBoxAdapter(child: HomeHeader(userName: userName)),
+              SliverToBoxAdapter(child: HomeTopFilters(userInitial: userInitial)),
               SliverToBoxAdapter(
                 child: QuickAccessGrid(
                   items: state.quickAccess,

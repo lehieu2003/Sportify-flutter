@@ -26,30 +26,30 @@ class QuickAccessGrid extends StatelessWidget {
           crossAxisCount: 2,
           crossAxisSpacing: SportifySpacing.sm,
           mainAxisSpacing: SportifySpacing.sm,
-          childAspectRatio: 2.8,
+          childAspectRatio: 2.35,
         ),
         itemBuilder: (context, index) {
           final item = items[index];
           return Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               onTap: onItemTap == null ? null : () => onItemTap!(item),
               child: Container(
                 decoration: BoxDecoration(
-                  color: SportifyColors.card,
-                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFF232323),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: <Widget>[
                     ClipRRect(
                       borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(10),
-                        bottomLeft: Radius.circular(10),
+                        topLeft: Radius.circular(8),
+                        bottomLeft: Radius.circular(8),
                       ),
                       child: ArtworkBox(
                         seed: item.title,
-                        size: 52,
+                        size: 56,
                         borderRadius: 0,
                       ),
                     ),
@@ -61,11 +61,17 @@ class QuickAccessGrid extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: SportifyColors.textPrimary,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
                         ),
                       ),
                     ),
-                    const SizedBox(width: SportifySpacing.sm),
+                    const Icon(
+                      Icons.more_horiz,
+                      size: 18,
+                      color: SportifyColors.textSecondary,
+                    ),
+                    const SizedBox(width: SportifySpacing.xs),
                   ],
                 ),
               ),
