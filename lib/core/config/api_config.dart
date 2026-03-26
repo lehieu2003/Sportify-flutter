@@ -28,4 +28,17 @@ class ApiConfig {
         return 'http://localhost:$backendPort';
     }
   }
+
+  static String resolveUrl(String? rawUrl) {
+    final value = rawUrl?.trim() ?? '';
+    if (value.isEmpty) return '';
+    final lower = value.toLowerCase();
+    if (lower.startsWith('http://') || lower.startsWith('https://')) {
+      return value;
+    }
+    if (value.startsWith('/')) {
+      return '$baseUrl$value';
+    }
+    return '$baseUrl/$value';
+  }
 }

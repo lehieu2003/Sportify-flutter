@@ -20,6 +20,8 @@ import 'features/library/presentation/viewmodels/library_view_model.dart';
 import 'features/listening/data/repositories/listening_repository.dart';
 import 'features/listening/data/services/listening_api_service.dart';
 import 'features/player/presentation/viewmodels/player_view_model.dart';
+import 'features/playback/data/repositories/playback_repository.dart';
+import 'features/playback/data/services/playback_api_service.dart';
 import 'features/playlists/data/repositories/playlist_repository.dart';
 import 'features/playlists/data/services/playlist_api_service.dart';
 
@@ -75,6 +77,9 @@ Future<void> main() async {
   );
   final playerViewModel = PlayerViewModel(
     listeningRepository: listeningRepository,
+    playbackRepository: PlaybackRepository(
+      service: PlaybackApiService(authorizedClient),
+    ),
   );
 
   runApp(

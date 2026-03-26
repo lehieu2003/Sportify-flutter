@@ -1,3 +1,5 @@
+import '../../../../core/config/api_config.dart';
+
 class LibraryTrack {
   const LibraryTrack({
     required this.id,
@@ -18,8 +20,8 @@ class LibraryTrack {
       id: (json['id'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
       artist: (json['artist'] ?? '').toString(),
-      coverUrl: (json['coverUrl'] ?? '').toString(),
-      audioUrl: (json['audioUrl'] ?? '').toString(),
+      coverUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
+      audioUrl: ApiConfig.resolveUrl((json['audioUrl'] ?? json['audio_url'])?.toString()),
     );
   }
 }

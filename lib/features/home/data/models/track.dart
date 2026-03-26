@@ -1,3 +1,5 @@
+import '../../../../core/config/api_config.dart';
+
 class Track {
   const Track({
     required this.id,
@@ -24,9 +26,12 @@ class Track {
       id: json['id'].toString(),
       title: title.trim().isNotEmpty ? title : 'Untitled track',
       subtitle: artist.trim().isNotEmpty ? artist : subtitleFallback,
-      thumbnailUrl:
-          (json['thumbnailUrl'] ?? json['coverUrl'] ?? '').toString(),
-      audioUrl: (json['audioUrl'] ?? json['audio_url'] ?? '').toString(),
+      thumbnailUrl: ApiConfig.resolveUrl(
+        (json['thumbnailUrl'] ?? json['coverUrl'] ?? json['cover_url'])?.toString(),
+      ),
+      audioUrl: ApiConfig.resolveUrl(
+        (json['audioUrl'] ?? json['audio_url'])?.toString(),
+      ),
     );
   }
 

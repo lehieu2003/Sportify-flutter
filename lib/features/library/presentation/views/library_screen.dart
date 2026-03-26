@@ -106,15 +106,32 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     );
                     return;
                   }
-                  await context.read<PlayerViewModel>().playTrack(
-                    PlayerTrack(
-                      id: item.id,
-                      title: item.title,
-                      artist: item.artist,
-                      audioUrl: item.audioUrl,
-                      coverUrl: item.coverUrl,
-                    ),
+                  final queue = state.items
+                      .where((it) => it.audioUrl.trim().isNotEmpty)
+                      .map(
+                        (it) => PlayerTrack(
+                          id: it.id,
+                          title: it.title,
+                          artist: it.artist,
+                          audioUrl: it.audioUrl,
+                          coverUrl: it.coverUrl,
+                        ),
+                      )
+                      .toList(growable: false);
+                  final startIndex = queue.indexWhere((it) => it.id == item.id);
+                  if (startIndex == -1) return;
+                  final playerVm = context.read<PlayerViewModel>();
+                  await playerVm.playQueue(
+                    queue,
+                    startIndex: startIndex,
                   );
+                  if (!context.mounted) return;
+                  final error = playerVm.state.errorMessage;
+                  if (error != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(error)),
+                    );
+                  }
                 },
                 leading: const CircleAvatar(child: Icon(Icons.queue_music)),
                 title: Text(item.title),

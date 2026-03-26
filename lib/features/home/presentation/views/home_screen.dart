@@ -32,22 +32,54 @@ class _HomeScreenState extends State<HomeScreen> {
     await context.read<HomeViewModel>().loadHomeFeed();
   }
 
-  Future<void> _playItem(BuildContext context, HomeMediaItem item) async {
+  Future<void> _playItem(
+    BuildContext context,
+    List<HomeMediaItem> items,
+    int index,
+  ) async {
+    final item = items[index];
     if (item.audioUrl.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Track has no audio url.')),
       );
       return;
     }
-    await context.read<PlayerViewModel>().playTrack(
-      PlayerTrack(
-        id: item.id,
-        title: item.title,
-        artist: item.subtitle,
-        audioUrl: item.audioUrl,
-        coverUrl: item.imageUrl,
-      ),
+    final queue = items
+        .where((it) => it.audioUrl.trim().isNotEmpty)
+        .map(
+          (it) => PlayerTrack(
+            id: it.id,
+            title: it.title,
+            artist: it.subtitle,
+            audioUrl: it.audioUrl,
+            coverUrl: it.imageUrl,
+          ),
+        )
+        .toList(growable: false);
+    final startTrack = PlayerTrack(
+      id: item.id,
+      title: item.title,
+      artist: item.subtitle,
+      audioUrl: item.audioUrl,
+      coverUrl: item.imageUrl,
     );
+    final startIndex = queue.indexWhere((it) => it.id == item.id);
+    final vm = context.read<PlayerViewModel>();
+    if (startIndex == -1) {
+      await vm.playTrack(startTrack);
+      if (!context.mounted) return;
+      final error = vm.state.errorMessage;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      }
+      return;
+    }
+    await vm.playQueue(queue, startIndex: startIndex);
+    if (!context.mounted) return;
+    final error = vm.state.errorMessage;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
   @override
@@ -75,35 +107,55 @@ class _HomeScreenState extends State<HomeScreen> {
               SliverToBoxAdapter(
                 child: QuickAccessGrid(
                   items: state.quickAccess,
-                  onItemTap: (item) => _playItem(context, item),
+                  onItemTap: (item) => _playItem(
+                    context,
+                    state.quickAccess,
+                    state.quickAccess.indexOf(item),
+                  ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Recently Played',
                   items: state.recentlyPlayed,
-                  onItemTap: (item) => _playItem(context, item),
+                  onItemTap: (item) => _playItem(
+                    context,
+                    state.recentlyPlayed,
+                    state.recentlyPlayed.indexOf(item),
+                  ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Made For You',
                   items: state.madeForYou,
-                  onItemTap: (item) => _playItem(context, item),
+                  onItemTap: (item) => _playItem(
+                    context,
+                    state.madeForYou,
+                    state.madeForYou.indexOf(item),
+                  ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Popular / Trending',
                   items: state.trending,
-                  onItemTap: (item) => _playItem(context, item),
+                  onItemTap: (item) => _playItem(
+                    context,
+                    state.trending,
+                    state.trending.indexOf(item),
+                  ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'New Releases',
                   items: state.newReleases,
-                  onItemTap: (item) => _playItem(context, item),
+                  onItemTap: (item) => _playItem(
+                    context,
+                    state.newReleases,
+                    state.newReleases.indexOf(item),
+                  ),
                 ),
               ),
               SliverToBoxAdapter(

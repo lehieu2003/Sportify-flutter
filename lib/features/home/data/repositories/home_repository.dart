@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/config/api_config.dart';
 import '../models/home_feed.dart';
 import '../models/track.dart';
 import '../services/home_api_service.dart';
@@ -76,8 +77,8 @@ class HomeRepository implements HomeTracksRepository {
       id: json['id'].toString(),
       title: title.trim().isNotEmpty ? title : 'Untitled track',
       subtitle: (json['artist'] ?? json['artist_name'] ?? 'Unknown artist').toString(),
-      thumbnailUrl: (json['coverUrl'] ?? '').toString(),
-      audioUrl: (json['audioUrl'] ?? json['audio_url'] ?? '').toString(),
+      thumbnailUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
+      audioUrl: ApiConfig.resolveUrl((json['audioUrl'] ?? json['audio_url'])?.toString()),
     );
   }
 

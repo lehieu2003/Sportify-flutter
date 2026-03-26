@@ -79,15 +79,32 @@ class _SearchScreenState extends State<SearchScreen> {
                         );
                         return;
                       }
-                      await context.read<PlayerViewModel>().playTrack(
-                        PlayerTrack(
-                          id: track.id,
-                          title: track.title,
-                          artist: track.artist,
-                          audioUrl: track.audioUrl,
-                          coverUrl: track.coverUrl,
-                        ),
+                      final queue = state.items
+                          .where((item) => item.audioUrl.trim().isNotEmpty)
+                          .map(
+                            (item) => PlayerTrack(
+                              id: item.id,
+                              title: item.title,
+                              artist: item.artist,
+                              audioUrl: item.audioUrl,
+                              coverUrl: item.coverUrl,
+                            ),
+                          )
+                          .toList(growable: false);
+                      final startIndex = queue.indexWhere((item) => item.id == track.id);
+                      if (startIndex == -1) return;
+                      final playerVm = context.read<PlayerViewModel>();
+                      await playerVm.playQueue(
+                        queue,
+                        startIndex: startIndex,
                       );
+                      if (!context.mounted) return;
+                      final error = playerVm.state.errorMessage;
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error)),
+                        );
+                      }
                     },
                     leading: const CircleAvatar(child: Icon(Icons.music_note)),
                     title: Text(track.title),

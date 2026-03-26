@@ -6,6 +6,7 @@ import '../../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../features/catalog/presentation/views/search_screen.dart';
 import '../../../features/home/presentation/views/home_screen.dart';
 import '../../../features/library/presentation/views/library_screen.dart';
+import '../../../features/player/presentation/views/now_playing_screen.dart';
 import '../../../features/player/presentation/viewmodels/player_view_model.dart';
 
 class MainLayout extends StatefulWidget {
@@ -142,7 +143,13 @@ class BottomNavigator extends StatelessWidget {
               Material(
                 color: Theme.of(context).colorScheme.surface,
                 child: InkWell(
-                  onTap: playerVm.togglePlayPause,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const NowPlayingScreen(),
+                      ),
+                    );
+                  },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
@@ -172,6 +179,10 @@ class BottomNavigator extends StatelessWidget {
                           icon: Icon(
                             playerState.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
                           ),
+                        ),
+                        IconButton(
+                          onPressed: playerVm.nextTrack,
+                          icon: const Icon(Icons.skip_next),
                         ),
                         IconButton(
                           onPressed: playerVm.stop,

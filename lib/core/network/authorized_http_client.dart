@@ -41,6 +41,17 @@ class AuthorizedHttpClient {
     );
   }
 
+  Future<http.Response> put(
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
+    return _send(
+      (requestHeaders) => _baseClient.put(uri, headers: requestHeaders, body: body),
+      headers,
+    );
+  }
+
   Future<http.Response> delete(
     Uri uri, {
     Map<String, String>? headers,
