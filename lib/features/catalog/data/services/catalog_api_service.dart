@@ -87,4 +87,20 @@ class CatalogApiService {
     }
     return CatalogAlbum.fromJson(payload);
   }
+
+  Future<List<CatalogTrack>> getAlbumTracks(String albumId) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/tracks/albums/$albumId/tracks');
+    final response = await _client.get(uri);
+    if (response.statusCode != 200) {
+      final payload = decodeJsonObject(response.body);
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to fetch album tracks.',
+      );
+    }
+    return decodeJsonObjectList(response.body)
+        .map(CatalogTrack.fromJson)
+        .toList(growable: false);
+  }
 }

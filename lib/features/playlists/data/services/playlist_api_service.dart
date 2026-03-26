@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../../core/config/api_config.dart';
 import '../../../../core/network/authorized_http_client.dart';
 import '../../../../core/network/json_utils.dart';
+import '../models/playlist_models.dart';
 
 class PlaylistApiService {
   PlaylistApiService(this._client);
@@ -23,6 +24,20 @@ class PlaylistApiService {
       );
     }
     return decodeJsonObjectList(response.body);
+  }
+
+  Future<PlaylistDetail> getPlaylistById(String playlistId) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playlists/$playlistId');
+    final response = await _client.get(uri);
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to get playlist detail.',
+      );
+    }
+    return PlaylistDetail.fromJson(payload);
   }
 
   Future<Map<String, dynamic>> createPlaylist({
@@ -94,7 +109,7 @@ class PlaylistApiService {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getPlaylistTracks(String playlistId) async {
+  Future<List<PlaylistTrack>> getPlaylistTracks(String playlistId) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playlists/$playlistId/tracks');
     final response = await _client.get(uri);
     if (response.statusCode != 200) {
@@ -105,7 +120,9 @@ class PlaylistApiService {
         fallback: 'Failed to get playlist tracks.',
       );
     }
-    return decodeJsonObjectList(response.body);
+    return decodeJsonObjectList(response.body)
+        .map(PlaylistTrack.fromJson)
+        .toList(growable: false);
   }
 
   Future<void> addTrackToPlaylist({

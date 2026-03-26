@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../playlists/presentation/views/playlist_detail_screen.dart';
 import '../viewmodels/library_view_model.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -65,6 +66,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
               if (index <= state.playlists.length) {
                 final playlist = state.playlists[index - 1];
                 return ListTile(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => PlaylistDetailScreen(
+                          playlistId: playlist.id,
+                          initialTitle: playlist.title,
+                        ),
+                      ),
+                    );
+                  },
                   leading: const CircleAvatar(child: Icon(Icons.queue_music_outlined)),
                   title: Text(playlist.title),
                   subtitle: Text('${playlist.trackCount} tracks'),

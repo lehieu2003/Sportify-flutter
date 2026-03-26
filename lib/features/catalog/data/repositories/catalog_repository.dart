@@ -31,4 +31,8 @@ class CatalogRepository {
   Future<CatalogAlbum> getAlbumById(String albumId) {
     return _service.getAlbumById(albumId);
   }
+
+  Future<List<CatalogTrack>> getAlbumTracks(String albumId) {
+    return _service.getAlbumTracks(albumId);
+  }
 }

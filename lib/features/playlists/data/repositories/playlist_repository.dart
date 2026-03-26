@@ -1,4 +1,5 @@
 import '../services/playlist_api_service.dart';
+import '../models/playlist_models.dart';
 
 class PlaylistRepository {
   PlaylistRepository({required PlaylistApiService service}) : _service = service;
@@ -7,6 +8,10 @@ class PlaylistRepository {
 
   Future<List<Map<String, dynamic>>> listPlaylists({int limit = 50}) {
     return _service.listPlaylists(limit: limit);
+  }
+
+  Future<PlaylistDetail> getPlaylistById(String playlistId) {
+    return _service.getPlaylistById(playlistId);
   }
 
   Future<Map<String, dynamic>> createPlaylist({
@@ -40,7 +45,7 @@ class PlaylistRepository {
   }
 
   Future<void> deletePlaylist(String playlistId) => _service.deletePlaylist(playlistId);
-  Future<List<Map<String, dynamic>>> getPlaylistTracks(String playlistId) =>
+  Future<List<PlaylistTrack>> getPlaylistTracks(String playlistId) =>
       _service.getPlaylistTracks(playlistId);
   Future<void> addTrackToPlaylist({
     required String playlistId,

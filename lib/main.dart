@@ -89,6 +89,7 @@ Future<void> main() async {
       searchViewModel: searchViewModel,
       libraryViewModel: libraryViewModel,
       playerViewModel: playerViewModel,
+      playlistRepository: playlistRepository,
     ),
   );
 }
