@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../../core/theme/sportify_theme.dart';
+import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../models/home_media_item.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/home_header.dart';
 import '../widgets/home_skeleton.dart';
@@ -30,6 +32,24 @@ class _HomeScreenState extends State<HomeScreen> {
     await context.read<HomeViewModel>().loadHomeFeed();
   }
 
+  Future<void> _playItem(BuildContext context, HomeMediaItem item) async {
+    if (item.audioUrl.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Track has no audio url.')),
+      );
+      return;
+    }
+    await context.read<PlayerViewModel>().playTrack(
+      PlayerTrack(
+        id: item.id,
+        title: item.title,
+        artist: item.subtitle,
+        audioUrl: item.audioUrl,
+        coverUrl: item.imageUrl,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     AuthViewModel? authVm;
@@ -53,30 +73,37 @@ class _HomeScreenState extends State<HomeScreen> {
             slivers: <Widget>[
               SliverToBoxAdapter(child: HomeHeader(userName: userName)),
               SliverToBoxAdapter(
-                child: QuickAccessGrid(items: state.quickAccess),
+                child: QuickAccessGrid(
+                  items: state.quickAccess,
+                  onItemTap: (item) => _playItem(context, item),
+                ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Recently Played',
                   items: state.recentlyPlayed,
+                  onItemTap: (item) => _playItem(context, item),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Made For You',
                   items: state.madeForYou,
+                  onItemTap: (item) => _playItem(context, item),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Popular / Trending',
                   items: state.trending,
+                  onItemTap: (item) => _playItem(context, item),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'New Releases',
                   items: state.newReleases,
+                  onItemTap: (item) => _playItem(context, item),
                 ),
               ),
               SliverToBoxAdapter(

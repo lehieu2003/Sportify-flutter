@@ -152,6 +152,28 @@ class AuthRepository {
     await clearSession();
   }
 
+  Future<AuthUser> updateProfile({
+    String? fullName,
+    String? imageUrl,
+  }) async {
+    final accessToken = readAccessToken();
+    if (accessToken == null || accessToken.isEmpty) {
+      throw Exception('Missing access token');
+    }
+    final user = await _service.updateMe(
+      accessToken: accessToken,
+      fullName: fullName,
+      imageUrl: imageUrl,
+    );
+    final refreshToken = readRefreshToken() ?? '';
+    await _persistSession(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      user: user,
+    );
+    return user;
+  }
+
   Future<void> clearSession() async {
     await _prefs.remove(_accessTokenKey);
     await _prefs.remove(_refreshTokenKey);

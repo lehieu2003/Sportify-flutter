@@ -5,6 +5,10 @@ class PlaylistRepository {
 
   final PlaylistApiService _service;
 
+  Future<List<Map<String, dynamic>>> listPlaylists({int limit = 50}) {
+    return _service.listPlaylists(limit: limit);
+  }
+
   Future<Map<String, dynamic>> createPlaylist({
     required String title,
     String? description,

@@ -7,6 +7,7 @@ class CatalogTrack {
     required this.albumId,
     required this.albumTitle,
     required this.coverUrl,
+    required this.audioUrl,
   });
 
   final String id;
@@ -16,6 +17,7 @@ class CatalogTrack {
   final String? albumId;
   final String? albumTitle;
   final String coverUrl;
+  final String audioUrl;
 
   factory CatalogTrack.fromJson(Map<String, dynamic> json) {
     return CatalogTrack(
@@ -26,6 +28,7 @@ class CatalogTrack {
       albumId: json['albumId']?.toString(),
       albumTitle: json['albumTitle']?.toString(),
       coverUrl: (json['coverUrl'] ?? '').toString(),
+      audioUrl: (json['audioUrl'] ?? '').toString(),
     );
   }
 }

@@ -12,22 +12,22 @@ class _FakeHomeRepository implements HomeTracksRepository {
   Stream<HomeFeed> watchHomeFeed() async* {
     yield const HomeFeed(
       quickAccess: <Track>[
-        Track(id: '1', title: 'Liked Songs', subtitle: 'Library', thumbnailUrl: ''),
+        Track(id: '1', title: 'Liked Songs', subtitle: 'Library', thumbnailUrl: '', audioUrl: ''),
       ],
       recentlyPlayed: <Track>[
-        Track(id: '2', title: 'Recently Played', subtitle: 'Artist', thumbnailUrl: ''),
+        Track(id: '2', title: 'Recently Played', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
       ],
       madeForYou: <Track>[
-        Track(id: '3', title: 'Made For You', subtitle: 'Artist', thumbnailUrl: ''),
+        Track(id: '3', title: 'Made For You', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
       ],
       trending: <Track>[
-        Track(id: '4', title: 'Trending', subtitle: 'Artist', thumbnailUrl: ''),
+        Track(id: '4', title: 'Trending', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
       ],
       newReleases: <Track>[
-        Track(id: '5', title: 'New', subtitle: 'Artist', thumbnailUrl: ''),
+        Track(id: '5', title: 'New', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
       ],
       genres: <Track>[
-        Track(id: '6', title: 'Pop', subtitle: '10 tracks', thumbnailUrl: ''),
+        Track(id: '6', title: 'Pop', subtitle: '10 tracks', thumbnailUrl: '', audioUrl: ''),
       ],
     );
   }

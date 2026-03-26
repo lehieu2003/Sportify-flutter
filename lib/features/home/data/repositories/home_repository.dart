@@ -77,6 +77,7 @@ class HomeRepository implements HomeTracksRepository {
       title: title.trim().isNotEmpty ? title : 'Untitled track',
       subtitle: (json['artist'] ?? json['artist_name'] ?? 'Unknown artist').toString(),
       thumbnailUrl: (json['coverUrl'] ?? '').toString(),
+      audioUrl: (json['audioUrl'] ?? json['audio_url'] ?? '').toString(),
     );
   }
 
@@ -87,6 +88,7 @@ class HomeRepository implements HomeTracksRepository {
       title: name.isNotEmpty ? name : 'Genre',
       subtitle: '${json['trackCount'] ?? json['track_count'] ?? 0} tracks',
       thumbnailUrl: '',
+      audioUrl: '',
     );
   }
 }

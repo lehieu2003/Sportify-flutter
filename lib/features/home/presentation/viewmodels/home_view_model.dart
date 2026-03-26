@@ -70,9 +70,11 @@ class HomeViewModel extends ChangeNotifier {
 
   HomeMediaItem _toItem(Track track) {
     return HomeMediaItem(
+      id: track.id,
       title: track.title,
       subtitle: track.subtitle,
       imageUrl: track.thumbnailUrl,
+      audioUrl: track.audioUrl,
     );
   }
 

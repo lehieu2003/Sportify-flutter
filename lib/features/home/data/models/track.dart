@@ -4,12 +4,14 @@ class Track {
     required this.title,
     required this.subtitle,
     required this.thumbnailUrl,
+    required this.audioUrl,
   });
 
   final String id;
   final String title;
   final String subtitle;
   final String thumbnailUrl;
+  final String audioUrl;
 
   factory Track.fromJson(Map<String, dynamic> json) {
     final title = (json['title'] ?? json['name'] ?? '').toString();
@@ -24,6 +26,7 @@ class Track {
       subtitle: artist.trim().isNotEmpty ? artist : subtitleFallback,
       thumbnailUrl:
           (json['thumbnailUrl'] ?? json['coverUrl'] ?? '').toString(),
+      audioUrl: (json['audioUrl'] ?? json['audio_url'] ?? '').toString(),
     );
   }
 
@@ -33,6 +36,7 @@ class Track {
       'title': title,
       'subtitle': subtitle,
       'thumbnailUrl': thumbnailUrl,
+      'audioUrl': audioUrl,
     };
   }
 }

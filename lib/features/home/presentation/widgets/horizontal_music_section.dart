@@ -10,10 +10,12 @@ class HorizontalMusicSection extends StatelessWidget {
     super.key,
     required this.title,
     required this.items,
+    this.onItemTap,
   });
 
   final String title;
   final List<HomeMediaItem> items;
+  final ValueChanged<HomeMediaItem>? onItemTap;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +31,11 @@ class HorizontalMusicSection extends StatelessWidget {
             separatorBuilder: (_, _) =>
                 const SizedBox(width: SportifySpacing.md),
             itemBuilder: (context, index) {
-              return MusicCard(item: items[index]);
+              final item = items[index];
+              return MusicCard(
+                item: item,
+                onTap: onItemTap == null ? null : () => onItemTap!(item),
+              );
             },
           ),
         ),

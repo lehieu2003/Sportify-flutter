@@ -9,6 +9,22 @@ class PlaylistApiService {
 
   final AuthorizedHttpClient _client;
 
+  Future<List<Map<String, dynamic>>> listPlaylists({int limit = 50}) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/playlists',
+    ).replace(queryParameters: <String, String>{'limit': '$limit'});
+    final response = await _client.get(uri);
+    if (response.statusCode != 200) {
+      final payload = decodeJsonObject(response.body);
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to list playlists.',
+      );
+    }
+    return decodeJsonObjectList(response.body);
+  }
+
   Future<Map<String, dynamic>> createPlaylist({
     required String title,
     String? description,

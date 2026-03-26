@@ -149,6 +149,32 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateProfile({
+    String? fullName,
+    String? imageUrl,
+  }) async {
+    _state = _state.copyWith(isSubmitting: true, errorMessage: null);
+    notifyListeners();
+
+    try {
+      final user = await _repository.updateProfile(
+        fullName: fullName,
+        imageUrl: imageUrl,
+      );
+      _state = _state.copyWith(
+        isSubmitting: false,
+        user: user,
+        errorMessage: null,
+      );
+    } catch (e) {
+      _state = _state.copyWith(
+        isSubmitting: false,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+    notifyListeners();
+  }
+
   void clearError() {
     if (_state.errorMessage == null) return;
     _state = _state.copyWith(errorMessage: null);

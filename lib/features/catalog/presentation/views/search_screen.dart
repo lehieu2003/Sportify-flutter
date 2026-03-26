@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
+import '../../../player/presentation/viewmodels/player_view_model.dart';
 import '../viewmodels/search_view_model.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -71,9 +72,27 @@ class _SearchScreenState extends State<SearchScreen> {
 
                   final track = state.items[index];
                   return ListTile(
+                    onTap: () async {
+                      if (track.audioUrl.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Track has no audio url.')),
+                        );
+                        return;
+                      }
+                      await context.read<PlayerViewModel>().playTrack(
+                        PlayerTrack(
+                          id: track.id,
+                          title: track.title,
+                          artist: track.artist,
+                          audioUrl: track.audioUrl,
+                          coverUrl: track.coverUrl,
+                        ),
+                      );
+                    },
                     leading: const CircleAvatar(child: Icon(Icons.music_note)),
                     title: Text(track.title),
                     subtitle: Text(track.artist),
+                    trailing: const Icon(Icons.play_arrow),
                   );
                 },
               ),

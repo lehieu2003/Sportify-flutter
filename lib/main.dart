@@ -17,6 +17,11 @@ import 'features/home/presentation/viewmodels/home_view_model.dart';
 import 'features/library/data/repositories/library_repository.dart';
 import 'features/library/data/services/library_api_service.dart';
 import 'features/library/presentation/viewmodels/library_view_model.dart';
+import 'features/listening/data/repositories/listening_repository.dart';
+import 'features/listening/data/services/listening_api_service.dart';
+import 'features/player/presentation/viewmodels/player_view_model.dart';
+import 'features/playlists/data/repositories/playlist_repository.dart';
+import 'features/playlists/data/services/playlist_api_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,7 +63,19 @@ Future<void> main() async {
 
   final libraryService = LibraryApiService(authorizedClient);
   final libraryRepository = LibraryRepository(service: libraryService);
-  final libraryViewModel = LibraryViewModel(repository: libraryRepository);
+  final playlistRepository = PlaylistRepository(
+    service: PlaylistApiService(authorizedClient),
+  );
+  final listeningRepository = ListeningRepository(
+    service: ListeningApiService(authorizedClient),
+  );
+  final libraryViewModel = LibraryViewModel(
+    repository: libraryRepository,
+    playlistRepository: playlistRepository,
+  );
+  final playerViewModel = PlayerViewModel(
+    listeningRepository: listeningRepository,
+  );
 
   runApp(
     SportifyApp(
@@ -66,6 +83,7 @@ Future<void> main() async {
       authViewModel: authViewModel,
       searchViewModel: searchViewModel,
       libraryViewModel: libraryViewModel,
+      playerViewModel: playerViewModel,
     ),
   );
 }

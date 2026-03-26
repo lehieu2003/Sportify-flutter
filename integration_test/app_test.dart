@@ -12,12 +12,12 @@ class _FakeHomeRepository implements HomeTracksRepository {
   @override
   Stream<HomeFeed> watchHomeFeed() async* {
     yield const HomeFeed(
-      quickAccess: <Track>[Track(id: '1', title: 'Liked Songs', subtitle: 'Library', thumbnailUrl: '')],
-      recentlyPlayed: <Track>[Track(id: '2', title: 'Recent 1', subtitle: 'Artist', thumbnailUrl: '')],
-      madeForYou: <Track>[Track(id: '3', title: 'Mix 1', subtitle: 'Artist', thumbnailUrl: '')],
-      trending: <Track>[Track(id: '4', title: 'Top 1', subtitle: 'Artist', thumbnailUrl: '')],
-      newReleases: <Track>[Track(id: '5', title: 'New 1', subtitle: 'Artist', thumbnailUrl: '')],
-      genres: <Track>[Track(id: '6', title: 'Pop', subtitle: '12 tracks', thumbnailUrl: '')],
+      quickAccess: <Track>[Track(id: '1', title: 'Liked Songs', subtitle: 'Library', thumbnailUrl: '', audioUrl: '')],
+      recentlyPlayed: <Track>[Track(id: '2', title: 'Recent 1', subtitle: 'Artist', thumbnailUrl: '', audioUrl: '')],
+      madeForYou: <Track>[Track(id: '3', title: 'Mix 1', subtitle: 'Artist', thumbnailUrl: '', audioUrl: '')],
+      trending: <Track>[Track(id: '4', title: 'Top 1', subtitle: 'Artist', thumbnailUrl: '', audioUrl: '')],
+      newReleases: <Track>[Track(id: '5', title: 'New 1', subtitle: 'Artist', thumbnailUrl: '', audioUrl: '')],
+      genres: <Track>[Track(id: '6', title: 'Pop', subtitle: '12 tracks', thumbnailUrl: '', audioUrl: '')],
     );
   }
 }

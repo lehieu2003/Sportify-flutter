@@ -42,6 +42,7 @@ void main() {
             title: 'Cached',
             subtitle: 'Local',
             thumbnailUrl: '',
+            audioUrl: '',
           ),
         ],
         newReleases: <Track>[],

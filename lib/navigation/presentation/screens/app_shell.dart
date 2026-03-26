@@ -6,6 +6,7 @@ import '../../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../features/catalog/presentation/views/search_screen.dart';
 import '../../../features/home/presentation/views/home_screen.dart';
 import '../../../features/library/presentation/views/library_screen.dart';
+import '../../../features/player/presentation/viewmodels/player_view_model.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key, required this.onLogout});
@@ -131,21 +132,75 @@ class BottomNavigator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: currentIndex,
-      onDestinationSelected: onSelected,
-      destinations: const <NavigationDestination>[
-        NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-        NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
-        NavigationDestination(
-          icon: Icon(Icons.library_music_outlined),
-          label: 'Library',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          label: 'Profile',
-        ),
-      ],
+    return Consumer<PlayerViewModel>(
+      builder: (context, playerVm, _) {
+        final playerState = playerVm.state;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            if (playerState.currentTrack != null)
+              Material(
+                color: Theme.of(context).colorScheme.surface,
+                child: InkWell(
+                  onTap: playerVm.togglePlayPause,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: <Widget>[
+                        const CircleAvatar(radius: 16, child: Icon(Icons.music_note, size: 18)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                playerState.currentTrack!.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                playerState.currentTrack!.artist,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: playerVm.togglePlayPause,
+                          icon: Icon(
+                            playerState.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: playerVm.stop,
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            NavigationBar(
+              selectedIndex: currentIndex,
+              onDestinationSelected: onSelected,
+              destinations: const <NavigationDestination>[
+                NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
+                NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
+                NavigationDestination(
+                  icon: Icon(Icons.library_music_outlined),
+                  label: 'Library',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }

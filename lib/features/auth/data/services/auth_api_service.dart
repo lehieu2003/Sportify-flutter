@@ -100,6 +100,34 @@ class AuthApiService {
     return AuthUser.fromJson(payload);
   }
 
+  Future<AuthUser> updateMe({
+    required String accessToken,
+    String? fullName,
+    String? imageUrl,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/me');
+    final response = await _client.patch(
+      uri,
+      headers: <String, String>{
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, dynamic>{
+        if (fullName != null) 'fullName': fullName,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+      }),
+    );
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Update profile failed.',
+      );
+    }
+    return AuthUser.fromJson(payload);
+  }
+
   Future<void> signout({required String refreshToken}) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/signout');
     final response = await _client.post(
