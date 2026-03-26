@@ -108,7 +108,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
   Widget build(BuildContext context) {
     final title = _album?.title ?? widget.initialTitle ?? 'Album';
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: Text(title),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
@@ -127,47 +130,142 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(
+                  SportifySpacing.md,
+                  SportifySpacing.md,
+                  SportifySpacing.md,
+                  88,
+                ),
                 itemCount: _tracks.length + 1,
                 itemBuilder: (context, index) {
                   if (index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        SportifySpacing.md,
-                        SportifySpacing.md,
-                        SportifySpacing.md,
-                        SportifySpacing.sm,
-                      ),
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: Text(
-                              '${_tracks.length} tracks • ${_album?.artist ?? ''}',
-                              style: const TextStyle(color: SportifyColors.textSecondary),
+                    final coverUrl = _album?.coverUrl ?? '';
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: coverUrl.trim().isEmpty
+                                ? Container(
+                                    width: 280,
+                                    height: 280,
+                                    color: SportifyColors.card,
+                                    child: const Icon(Icons.album, size: 120),
+                                  )
+                                : Image.network(
+                                    coverUrl,
+                                    width: 280,
+                                    height: 280,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      width: 280,
+                                      height: 280,
+                                      color: SportifyColors.card,
+                                      child: const Icon(Icons.album, size: 120),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: SportifySpacing.lg),
+                        Text(
+                          _album?.title ?? '',
+                          style: const TextStyle(
+                            fontSize: 44,
+                            fontWeight: FontWeight.w700,
+                            height: 1.02,
+                            color: SportifyColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: SportifySpacing.sm),
+                        Row(
+                          children: <Widget>[
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundColor: SportifyColors.card,
+                              child: Text(
+                                (_album?.artist.isNotEmpty == true)
+                                    ? _album!.artist.substring(0, 1).toUpperCase()
+                                    : 'A',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                             ),
-                          ),
-                          FilledButton.icon(
-                            onPressed: _playAll,
-                            icon: const Icon(Icons.play_arrow),
-                            label: const Text('Play all'),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: SportifySpacing.sm),
+                            Text(
+                              _album?.artist ?? 'Unknown artist',
+                              style: const TextStyle(
+                                color: SportifyColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: SportifySpacing.sm),
+                        Text(
+                          _buildMetaLine(),
+                          style: const TextStyle(color: SportifyColors.textSecondary),
+                        ),
+                        const SizedBox(height: SportifySpacing.md),
+                        Row(
+                          children: <Widget>[
+                            const Icon(Icons.check_circle, color: SportifyColors.primary, size: 30),
+                            const SizedBox(width: SportifySpacing.md),
+                            const Icon(Icons.download_for_offline_outlined, size: 30),
+                            const SizedBox(width: SportifySpacing.md),
+                            const Icon(Icons.more_horiz, size: 30),
+                            const Spacer(),
+                            Container(
+                              width: 62,
+                              height: 62,
+                              decoration: const BoxDecoration(
+                                color: SportifyColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: IconButton(
+                                onPressed: _playAll,
+                                icon: const Icon(
+                                  Icons.play_arrow,
+                                  color: SportifyColors.background,
+                                  size: 34,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: SportifySpacing.md),
+                      ],
                     );
                   }
+
                   final track = _tracks[index - 1];
                   return ListTile(
+                    contentPadding: EdgeInsets.zero,
                     onTap: () => _playAt(index - 1),
-                    leading: CircleAvatar(
-                      backgroundColor: SportifyColors.card,
-                      child: Text('$index'),
+                    title: Text(
+                      track.title,
+                      style: const TextStyle(
+                        color: SportifyColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    title: Text(track.title),
                     subtitle: Text(track.artist),
-                    trailing: const Icon(Icons.play_arrow),
+                    trailing: const Icon(Icons.more_vert),
                   );
                 },
               ),
             ),
     );
+  }
+
+  String _buildMetaLine() {
+    final releaseDate = _album?.releaseDate;
+    if (releaseDate == null || releaseDate.isEmpty) {
+      return '${_tracks.length} tracks';
+    }
+    final parsed = DateTime.tryParse(releaseDate);
+    if (parsed == null) {
+      return '${_tracks.length} tracks';
+    }
+    return 'Ep • ${parsed.day} thg ${parsed.month} ${parsed.year}';
   }
 }

@@ -74,19 +74,22 @@ class CatalogAlbum {
     required this.title,
     required this.artist,
     required this.coverUrl,
+    this.releaseDate,
   });
 
   final String id;
   final String title;
   final String artist;
   final String coverUrl;
+  final String? releaseDate;
 
   factory CatalogAlbum.fromJson(Map<String, dynamic> json) {
     return CatalogAlbum(
       id: (json['id'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
       artist: (json['artist'] ?? '').toString(),
-      coverUrl: (json['coverUrl'] ?? '').toString(),
+      coverUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
+      releaseDate: json['releaseDate']?.toString(),
     );
   }
 }

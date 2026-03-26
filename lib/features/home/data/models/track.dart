@@ -7,6 +7,8 @@ class Track {
     required this.subtitle,
     required this.thumbnailUrl,
     required this.audioUrl,
+    this.albumId,
+    this.albumTitle,
   });
 
   final String id;
@@ -14,6 +16,8 @@ class Track {
   final String subtitle;
   final String thumbnailUrl;
   final String audioUrl;
+  final String? albumId;
+  final String? albumTitle;
 
   factory Track.fromJson(Map<String, dynamic> json) {
     final title = (json['title'] ?? json['name'] ?? '').toString();
@@ -32,6 +36,8 @@ class Track {
       audioUrl: ApiConfig.resolveUrl(
         (json['audioUrl'] ?? json['audio_url'])?.toString(),
       ),
+      albumId: (json['albumId'] ?? json['album_id'])?.toString(),
+      albumTitle: (json['albumTitle'] ?? json['album_title'])?.toString(),
     );
   }
 
@@ -42,6 +48,8 @@ class Track {
       'subtitle': subtitle,
       'thumbnailUrl': thumbnailUrl,
       'audioUrl': audioUrl,
+      'albumId': albumId,
+      'albumTitle': albumTitle,
     };
   }
 }

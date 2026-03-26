@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../features/auth/presentation/views/profile_screen.dart';
 import '../../../features/catalog/presentation/views/search_screen.dart';
 import '../../../features/home/presentation/views/home_screen.dart';
 import '../../../features/library/presentation/views/library_screen.dart';
@@ -21,8 +22,6 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
-
-  static const _titles = <String>['Home', 'Search', 'Your Library'];
 
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List<GlobalKey<NavigatorState>>.generate(
@@ -70,34 +69,108 @@ class _MainLayoutState extends State<MainLayout> {
         }
       },
       child: Scaffold(
-        appBar: _currentIndex == 0 ? null : AppBar(title: Text(_titles[_currentIndex])),
         drawer: Drawer(
+          backgroundColor: const Color(0xFF191919),
           child: SafeArea(
-            child: ListView(
+            child: Column(
               children: <Widget>[
-                DrawerHeader(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(
+                    SportifySpacing.md,
+                    SportifySpacing.md,
+                    SportifySpacing.md,
+                    SportifySpacing.sm,
+                  ),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: SportifyColors.border),
+                    ),
+                  ),
+                  child: Row(
                     children: <Widget>[
-                      const Text(
-                        'Sportify',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: SportifyColors.primary,
+                        child: Text(
+                          (authUser != null && authUser.trim().isNotEmpty)
+                              ? authUser.substring(0, 1).toUpperCase()
+                              : 'H',
+                          style: const TextStyle(
+                            color: SportifyColors.background,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        authUser ?? 'Signed in user',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      const SizedBox(width: SportifySpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              authUser ?? 'hieu',
+                              style: const TextStyle(
+                                color: SportifyColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                height: 1.05,
+                              ),
+                            ),
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: SportifyColors.textSecondary,
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(0, 0),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const ProfileScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text('View profile'),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: const Text('Logout'),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(vertical: SportifySpacing.sm),
+                    children: <Widget>[
+                      _DrawerMenuTile(
+                        icon: Icons.add_circle_outline,
+                        label: 'Add account',
+                        onTap: () {},
+                      ),
+                      _DrawerMenuTile(
+                        icon: Icons.bolt_outlined,
+                        label: 'What\'s new',
+                        onTap: () {},
+                      ),
+                      _DrawerMenuTile(
+                        icon: Icons.access_time,
+                        label: 'Recents',
+                        onTap: () {},
+                      ),
+                      _DrawerMenuTile(
+                        icon: Icons.settings_outlined,
+                        label: 'Settings and privacy',
+                        onTap: () {},
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                _DrawerMenuTile(
+                  icon: Icons.logout,
+                  label: 'Logout',
                   onTap: () {
                     Navigator.of(context).pop();
                     widget.onLogout();
@@ -130,6 +203,35 @@ class _MainLayoutState extends State<MainLayout> {
           },
         ),
       ),
+    );
+  }
+}
+
+class _DrawerMenuTile extends StatelessWidget {
+  const _DrawerMenuTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: SportifyColors.textPrimary, size: 18),
+      horizontalTitleGap: 8,
+      title: Text(
+        label,
+        style: const TextStyle(
+          color: SportifyColors.textPrimary,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

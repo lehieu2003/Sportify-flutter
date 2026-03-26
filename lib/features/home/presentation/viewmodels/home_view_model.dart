@@ -69,24 +69,39 @@ class HomeViewModel extends ChangeNotifier {
   HomeUiState get state => _state;
 
   HomeMediaItem _toItem(Track track) {
+    final albumTitle = track.albumTitle?.trim() ?? '';
+    final displayTitle = albumTitle.isNotEmpty ? albumTitle : track.title;
+    final albumId = track.albumId?.trim();
     return HomeMediaItem(
-      id: track.id,
-      title: track.title,
+      id: albumId != null && albumId.isNotEmpty ? albumId : track.id,
+      title: displayTitle,
       subtitle: track.subtitle,
       imageUrl: track.thumbnailUrl,
       audioUrl: track.audioUrl,
+      albumId: albumId,
     );
+  }
+
+  List<HomeMediaItem> _toAlbumItems(List<Track> tracks) {
+    final mapped = tracks.map(_toItem);
+    final unique = <String, HomeMediaItem>{};
+    for (final item in mapped) {
+      final albumId = item.albumId?.trim();
+      final key = (albumId != null && albumId.isNotEmpty) ? 'album:$albumId' : 'track:${item.id}';
+      unique.putIfAbsent(key, () => item);
+    }
+    return <HomeMediaItem>[...unique.values];
   }
 
   HomeUiState _fromFeed(HomeFeed feed) {
     return _state.copyWith(
       isLoading: false,
-      quickAccess: feed.quickAccess.map(_toItem).toList(growable: false),
-      recentlyPlayed: feed.recentlyPlayed.map(_toItem).toList(growable: false),
-      madeForYou: feed.madeForYou.map(_toItem).toList(growable: false),
-      trending: feed.trending.map(_toItem).toList(growable: false),
-      newReleases: feed.newReleases.map(_toItem).toList(growable: false),
-      genres: feed.genres.map(_toItem).toList(growable: false),
+      quickAccess: _toAlbumItems(feed.quickAccess),
+      recentlyPlayed: _toAlbumItems(feed.recentlyPlayed),
+      madeForYou: _toAlbumItems(feed.madeForYou),
+      trending: _toAlbumItems(feed.trending),
+      newReleases: _toAlbumItems(feed.newReleases),
+      genres: _toAlbumItems(feed.genres),
       errorMessage: null,
     );
   }

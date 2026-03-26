@@ -5,6 +5,7 @@ class HomeMediaItem {
     required this.subtitle,
     required this.imageUrl,
     this.audioUrl = '',
+    this.albumId,
   });
 
   final String id;
@@ -12,4 +13,5 @@ class HomeMediaItem {
   final String subtitle;
   final String imageUrl;
   final String audioUrl;
+  final String? albumId;
 }

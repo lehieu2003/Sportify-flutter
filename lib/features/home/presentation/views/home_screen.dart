@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../../core/theme/sportify_theme.dart';
-import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../catalog/presentation/views/album_detail_screen.dart';
 import '../models/home_media_item.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/home_skeleton.dart';
@@ -32,54 +33,30 @@ class _HomeScreenState extends State<HomeScreen> {
     await context.read<HomeViewModel>().loadHomeFeed();
   }
 
-  Future<void> _playItem(
-    BuildContext context,
-    List<HomeMediaItem> items,
-    int index,
-  ) async {
-    final item = items[index];
-    if (item.audioUrl.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Track has no audio url.')),
-      );
-      return;
-    }
-    final queue = items
-        .where((it) => it.audioUrl.trim().isNotEmpty)
-        .map(
-          (it) => PlayerTrack(
-            id: it.id,
-            title: it.title,
-            artist: it.subtitle,
-            audioUrl: it.audioUrl,
-            coverUrl: it.imageUrl,
-          ),
-        )
-        .toList(growable: false);
-    final startTrack = PlayerTrack(
-      id: item.id,
-      title: item.title,
-      artist: item.subtitle,
-      audioUrl: item.audioUrl,
-      coverUrl: item.imageUrl,
-    );
-    final startIndex = queue.indexWhere((it) => it.id == item.id);
-    final vm = context.read<PlayerViewModel>();
-    if (startIndex == -1) {
-      await vm.playTrack(startTrack);
-      if (!context.mounted) return;
-      final error = vm.state.errorMessage;
-      if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+  Future<void> _openAlbum(BuildContext context, HomeMediaItem item) async {
+    String? albumId = item.albumId?.trim();
+    if (albumId == null || albumId.isEmpty) {
+      try {
+        final track = await context.read<CatalogRepository>().getTrackById(item.id);
+        albumId = track.albumId?.trim();
+      } catch (_) {
+        albumId = null;
       }
+    }
+    if (albumId == null || albumId.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Album chưa có dữ liệu.')));
       return;
     }
-    await vm.playQueue(queue, startIndex: startIndex);
     if (!context.mounted) return;
-    final error = vm.state.errorMessage;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            AlbumDetailScreen(albumId: albumId!, initialTitle: item.title),
+      ),
+    );
   }
 
   @override
@@ -106,59 +83,44 @@ class _HomeScreenState extends State<HomeScreen> {
           onRefresh: _onRefresh,
           child: CustomScrollView(
             slivers: <Widget>[
-              SliverToBoxAdapter(child: HomeTopFilters(userInitial: userInitial)),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: SportifySpacing.lg),
+              ),
+              SliverToBoxAdapter(
+                child: HomeTopFilters(userInitial: userInitial),
+              ),
               SliverToBoxAdapter(
                 child: QuickAccessGrid(
                   items: state.quickAccess,
-                  onItemTap: (item) => _playItem(
-                    context,
-                    state.quickAccess,
-                    state.quickAccess.indexOf(item),
-                  ),
+                  onItemTap: (item) => _openAlbum(context, item),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Recently Played',
                   items: state.recentlyPlayed,
-                  onItemTap: (item) => _playItem(
-                    context,
-                    state.recentlyPlayed,
-                    state.recentlyPlayed.indexOf(item),
-                  ),
+                  onItemTap: (item) => _openAlbum(context, item),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Made For You',
                   items: state.madeForYou,
-                  onItemTap: (item) => _playItem(
-                    context,
-                    state.madeForYou,
-                    state.madeForYou.indexOf(item),
-                  ),
+                  onItemTap: (item) => _openAlbum(context, item),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'Popular / Trending',
                   items: state.trending,
-                  onItemTap: (item) => _playItem(
-                    context,
-                    state.trending,
-                    state.trending.indexOf(item),
-                  ),
+                  onItemTap: (item) => _openAlbum(context, item),
                 ),
               ),
               SliverToBoxAdapter(
                 child: HorizontalMusicSection(
                   title: 'New Releases',
                   items: state.newReleases,
-                  onItemTap: (item) => _playItem(
-                    context,
-                    state.newReleases,
-                    state.newReleases.indexOf(item),
-                  ),
+                  onItemTap: (item) => _openAlbum(context, item),
                 ),
               ),
               SliverToBoxAdapter(
@@ -177,7 +139,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: SportifySpacing.xl)),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: SportifySpacing.xl),
+              ),
             ],
           ),
         );

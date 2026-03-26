@@ -77,9 +77,9 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.pumpAndSettle();
 
-    expect(find.text('Test Album'), findsOneWidget);
+    expect(find.text('Test Album'), findsWidgets);
     expect(find.text('Track One'), findsOneWidget);
-    expect(find.text('Play all'), findsOneWidget);
+    expect(find.byIcon(Icons.play_arrow), findsOneWidget);
   });
 
   testWidgets('AlbumDetailScreen renders error state', (tester) async {
