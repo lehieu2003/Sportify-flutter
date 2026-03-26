@@ -67,6 +67,7 @@ class LibraryPlaylist {
 class LibraryAlbum {
   const LibraryAlbum({
     required this.id,
+    required this.artistId,
     required this.title,
     required this.artist,
     required this.coverUrl,
@@ -74,6 +75,7 @@ class LibraryAlbum {
   });
 
   final String id;
+  final String artistId;
   final String title;
   final String artist;
   final String coverUrl;
@@ -82,6 +84,7 @@ class LibraryAlbum {
   factory LibraryAlbum.fromJson(Map<String, dynamic> json) {
     return LibraryAlbum(
       id: (json['id'] ?? '').toString(),
+      artistId: (json['artistId'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
       artist: (json['artist'] ?? '').toString(),
       coverUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),

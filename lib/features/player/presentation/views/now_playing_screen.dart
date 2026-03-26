@@ -34,12 +34,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     ),
                     const SizedBox(height: SportifySpacing.sm),
                     Expanded(
-                      child: ListView.builder(
+                      child: ReorderableListView.builder(
+                        buildDefaultDragHandles: false,
                         itemCount: state.queue.length,
+                        onReorder: (oldIndex, newIndex) {
+                          final targetIndex = oldIndex < newIndex ? newIndex - 1 : newIndex;
+                          queueVm.reorderQueue(fromIndex: oldIndex, toIndex: targetIndex);
+                        },
                         itemBuilder: (context, index) {
                           final item = state.queue[index];
                           final isCurrent = index == state.queueIndex;
                           return ListTile(
+                            key: ValueKey(item.id),
                             onTap: () => queueVm.jumpToQueueIndex(index),
                             leading: Icon(
                               isCurrent ? Icons.graphic_eq : Icons.music_note,
@@ -49,11 +55,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             ),
                             title: Text(item.title),
                             subtitle: Text(item.artist),
-                            trailing: IconButton(
-                              onPressed: state.queue.length <= 1
-                                  ? null
-                                  : () => queueVm.removeFromQueueAt(index),
-                              icon: const Icon(Icons.remove_circle_outline),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                IconButton(
+                                  onPressed: state.queue.length <= 1
+                                      ? null
+                                      : () => queueVm.removeFromQueueAt(index),
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                ),
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8),
+                                    child: Icon(Icons.drag_handle),
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },

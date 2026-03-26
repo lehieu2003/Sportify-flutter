@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
+import '../../../catalog/presentation/views/album_detail_screen.dart';
+import '../../../catalog/presentation/views/artist_detail_screen.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
 import '../../../playlists/presentation/views/playlist_detail_screen.dart';
 import '../viewmodels/library_view_model.dart';
@@ -127,6 +129,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   itemBuilder: (context, index) {
                     final album = state.albums[index];
                     return ListTile(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => AlbumDetailScreen(
+                              albumId: album.id,
+                              initialTitle: album.title,
+                            ),
+                          ),
+                        );
+                      },
                       leading: const CircleAvatar(child: Icon(Icons.album_outlined)),
                       title: Text(album.title),
                       subtitle: Text('${album.artist} • ${album.trackCount} tracks'),
@@ -139,6 +151,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   itemBuilder: (context, index) {
                     final artist = state.artists[index];
                     return ListTile(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ArtistDetailScreen(
+                              artistId: artist.id,
+                              initialName: artist.name,
+                            ),
+                          ),
+                        );
+                      },
                       leading: const CircleAvatar(child: Icon(Icons.person_outline)),
                       title: Text(artist.name),
                       subtitle: Text('${artist.albumCount} albums'),
