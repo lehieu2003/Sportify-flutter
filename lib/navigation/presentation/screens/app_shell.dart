@@ -6,10 +6,13 @@ import '../../../features/auth/presentation/views/profile_screen.dart';
 import '../../../features/catalog/presentation/views/search_screen.dart';
 import '../../../features/home/presentation/views/home_screen.dart';
 import '../../../features/library/presentation/views/library_screen.dart';
+import '../../../features/library/presentation/viewmodels/library_view_model.dart';
 import '../../../features/player/presentation/views/now_playing_screen.dart';
 import '../../../features/player/presentation/viewmodels/player_view_model.dart';
+import '../../../features/playlists/presentation/views/playlist_detail_screen.dart';
 import '../../../core/theme/sportify_theme.dart';
 import '../widgets/create_menu_sheet.dart';
+import '../widgets/create_playlist_name_sheet.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key, required this.onLogout});
@@ -36,12 +39,28 @@ class _MainLayoutState extends State<MainLayout> {
   ];
 
   Future<void> _openCreateSheet() async {
-    await showModalBottomSheet<void>(
+    final created = await showModalBottomSheet<CreatedPlaylistPayload>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => const CreateMenuSheet(),
     );
+    if (created == null || !mounted) return;
+
+    final libraryVm = context.read<LibraryViewModel>();
+    await libraryVm.loadSavedTracks();
+    if (!mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlaylistDetailScreen(
+          playlistId: created.id,
+          initialTitle: created.title,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await libraryVm.loadSavedTracks();
   }
 
   @override
@@ -142,7 +161,9 @@ class _MainLayoutState extends State<MainLayout> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(vertical: SportifySpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: SportifySpacing.sm,
+                    ),
                     children: <Widget>[
                       _DrawerMenuTile(
                         icon: Icons.add_circle_outline,
@@ -262,16 +283,19 @@ class BottomNavigator extends StatelessWidget {
                 onSelected(index);
               },
               destinations: const <NavigationDestination>[
-                NavigationDestination(icon: Icon(Icons.home_filled), label: 'Home'),
-                NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
+                NavigationDestination(
+                  icon: Icon(Icons.home_filled),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.search),
+                  label: 'Search',
+                ),
                 NavigationDestination(
                   icon: Icon(Icons.library_music_outlined),
                   label: 'Your Library',
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.add),
-                  label: 'Create',
-                ),
+                NavigationDestination(icon: Icon(Icons.add), label: 'Create'),
               ],
             ),
           ],
@@ -300,9 +324,7 @@ class _MiniPlayerBar extends StatelessWidget {
       child: InkWell(
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const NowPlayingScreen(),
-            ),
+            MaterialPageRoute<void>(builder: (_) => const NowPlayingScreen()),
           );
         },
         child: Padding(
@@ -339,18 +361,26 @@ class _MiniPlayerBar extends StatelessWidget {
                           track.artist,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: SportifyColors.textSecondary),
+                          style: const TextStyle(
+                            color: SportifyColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
                     onPressed: () {},
-                    icon: const Icon(Icons.devices_outlined, color: SportifyColors.textPrimary),
+                    icon: const Icon(
+                      Icons.devices_outlined,
+                      color: SportifyColors.textPrimary,
+                    ),
                   ),
                   IconButton(
                     onPressed: () {},
-                    icon: const Icon(Icons.add_circle_outline, color: SportifyColors.textPrimary),
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: SportifyColors.textPrimary,
+                    ),
                   ),
                   IconButton(
                     onPressed: playerVm.togglePlayPause,

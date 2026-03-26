@@ -105,13 +105,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   itemBuilder: (context, index) {
                     final playlist = state.playlists[index];
                     return ListTile(
-                      onTap: () {
-                        ContentDeeplinkNavigator.open(
+                      onTap: () async {
+                        await ContentDeeplinkNavigator.open(
                           context: context,
                           type: 'playlist',
                           id: playlist.id,
                           title: playlist.title,
                         );
+                        if (!context.mounted) return;
+                        await vm.loadSavedTracks();
                       },
                       leading: const CircleAvatar(
                         child: Icon(Icons.queue_music_outlined),

@@ -228,6 +228,7 @@ class _SearchScreenState extends State<SearchScreen> {
         108,
       ),
       children: <Widget>[
+        const SizedBox(height: 20),
         Row(
           children: <Widget>[
             const CircleAvatar(
