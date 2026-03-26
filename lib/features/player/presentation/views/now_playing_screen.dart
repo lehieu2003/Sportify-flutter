@@ -69,6 +69,86 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
+  Future<void> _showShareSheet(PlayerTrack track) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            SportifySpacing.md,
+            SportifySpacing.md,
+            SportifySpacing.md,
+            SportifySpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: SportifyColors.textDisabled,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: SportifySpacing.md),
+              Container(
+                width: 220,
+                padding: const EdgeInsets.all(SportifySpacing.md),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF292929),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 180,
+                        child: _AlbumArt(imageUrl: track.coverUrl),
+                      ),
+                    ),
+                    const SizedBox(height: SportifySpacing.sm),
+                    Text(
+                      track.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: SportifyColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      track.artist,
+                      style: const TextStyle(color: SportifyColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: SportifySpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: const <Widget>[
+                  _ShareAction(icon: Icons.link, label: 'Copy link'),
+                  _ShareAction(icon: Icons.camera_alt_outlined, label: 'Stories'),
+                  _ShareAction(icon: Icons.message_outlined, label: 'SMS'),
+                  _ShareAction(icon: Icons.more_horiz, label: 'More'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<PlayerViewModel>(
@@ -102,97 +182,232 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             : SportifyColors.primary;
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Now Playing'),
-            actions: <Widget>[
-              IconButton(
-                onPressed: () => _openQueueSheet(vm),
-                icon: const Icon(Icons.queue_music),
-              ),
-            ],
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(SportifySpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: SportifyColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(Icons.album, size: 120),
+          body: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              _NowPlayingBackdrop(imageUrl: track.coverUrl),
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Color(0x33000000),
+                      Color(0xAA000000),
+                      Color(0xF0121212),
+                    ],
                   ),
                 ),
-                const SizedBox(height: SportifySpacing.lg),
-                Text(
-                  track.title,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: SportifySpacing.xs),
-                Text(
-                  track.artist,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: SportifySpacing.md),
-                Slider(
-                  value: positionMs,
-                  max: (durationMs > 0 ? durationMs : 1).toDouble(),
-                  onChanged: (value) => setState(() => _dragValueMs = value),
-                  onChangeEnd: (value) async {
-                    setState(() => _dragValueMs = null);
-                    await vm.seek(Duration(milliseconds: value.toInt()));
-                  },
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: <Widget>[
-                    Text(_formatDuration(state.position)),
-                    Text(_formatDuration(state.duration)),
-                  ],
-                ),
-                const SizedBox(height: SportifySpacing.md),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    IconButton(
-                      onPressed: vm.toggleShuffle,
-                      iconSize: 28,
-                      color: isShuffleActive
-                          ? SportifyColors.primary
-                          : SportifyColors.textSecondary,
-                      icon: const Icon(Icons.shuffle),
-                    ),
-                    IconButton(
-                      onPressed: vm.previousTrack,
-                      iconSize: 36,
-                      icon: const Icon(Icons.skip_previous),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: vm.togglePlayPause,
-                      iconSize: 56,
-                      icon: Icon(
-                        state.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    SportifySpacing.md,
+                    SportifySpacing.sm,
+                    SportifySpacing.md,
+                    SportifySpacing.md,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.expand_more, color: SportifyColors.textPrimary),
+                          ),
+                          const SizedBox(width: SportifySpacing.sm),
+                          Expanded(
+                            child: Column(
+                              children: <Widget>[
+                                Text(
+                                  'PLAYING FROM ARTIST',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: SportifyColors.textSecondary,
+                                    letterSpacing: 0.7,
+                                  ),
+                                ),
+                                Text(
+                                  track.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: SportifyColors.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _showShareSheet(track),
+                            icon: const Icon(Icons.more_vert, color: SportifyColors.textPrimary),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: vm.nextTrack,
-                      iconSize: 36,
-                      icon: const Icon(Icons.skip_next),
-                    ),
-                    IconButton(
-                      onPressed: vm.cycleRepeatMode,
-                      iconSize: 28,
-                      color: repeatColor,
-                      icon: Icon(repeatIcon),
-                    ),
-                  ],
+                      const SizedBox(height: SportifySpacing.md),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: const <BoxShadow>[
+                              BoxShadow(
+                                color: Color(0x44000000),
+                                blurRadius: 20,
+                                offset: Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: _AlbumArt(imageUrl: track.coverUrl),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: SportifySpacing.lg),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  track.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: SportifyColors.textPrimary,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.05,
+                                  ),
+                                ),
+                                const SizedBox(height: SportifySpacing.xs),
+                                Text(
+                                  track.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: SportifyColors.textSecondary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {},
+                            iconSize: 36,
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              color: SportifyColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: positionMs,
+                        max: (durationMs > 0 ? durationMs : 1).toDouble(),
+                        onChanged: (value) => setState(() => _dragValueMs = value),
+                        onChangeEnd: (value) async {
+                          setState(() => _dragValueMs = null);
+                          await vm.seek(Duration(milliseconds: value.toInt()));
+                        },
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          Text(_formatDuration(state.position)),
+                          Text(_formatDuration(state.duration)),
+                        ],
+                      ),
+                      const SizedBox(height: SportifySpacing.sm),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: vm.toggleShuffle,
+                            iconSize: 30,
+                            color: isShuffleActive
+                                ? SportifyColors.primary
+                                : SportifyColors.textSecondary,
+                            icon: const Icon(Icons.shuffle),
+                          ),
+                          IconButton(
+                            onPressed: vm.previousTrack,
+                            iconSize: 42,
+                            icon: const Icon(Icons.skip_previous, color: SportifyColors.textPrimary),
+                          ),
+                          IconButton(
+                            onPressed: vm.togglePlayPause,
+                            iconSize: 84,
+                            icon: Icon(
+                              state.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+                              color: SportifyColors.textPrimary,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: vm.nextTrack,
+                            iconSize: 42,
+                            icon: const Icon(Icons.skip_next, color: SportifyColors.textPrimary),
+                          ),
+                          IconButton(
+                            onPressed: vm.cycleRepeatMode,
+                            iconSize: 30,
+                            color: repeatColor,
+                            icon: Icon(repeatIcon),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: SportifySpacing.xs),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(Icons.devices_outlined),
+                          ),
+                          IconButton(
+                            onPressed: () => _showShareSheet(track),
+                            icon: const Icon(Icons.share_outlined),
+                          ),
+                          IconButton(
+                            onPressed: () => _openQueueSheet(vm),
+                            icon: const Icon(Icons.playlist_play),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: SportifySpacing.sm),
+                      Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF108154),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: SportifySpacing.md),
+                        child: Row(
+                          children: const <Widget>[
+                            Text(
+                              'Lyrics',
+                              style: TextStyle(
+                                color: SportifyColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 24,
+                              ),
+                            ),
+                            Spacer(),
+                            Icon(Icons.share_outlined, color: SportifyColors.textPrimary),
+                            SizedBox(width: SportifySpacing.sm),
+                            Icon(Icons.open_in_full, color: SportifyColors.textPrimary),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -203,5 +418,73 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+}
+
+class _NowPlayingBackdrop extends StatelessWidget {
+  const _NowPlayingBackdrop({required this.imageUrl});
+
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl.trim().isEmpty) {
+      return Container(color: const Color(0xFF1A1A1A));
+    }
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => Container(color: const Color(0xFF1A1A1A)),
+    );
+  }
+}
+
+class _AlbumArt extends StatelessWidget {
+  const _AlbumArt({required this.imageUrl});
+
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl.trim().isEmpty) {
+      return Container(
+        color: SportifyColors.surface,
+        child: const Icon(Icons.album, size: 120, color: SportifyColors.textSecondary),
+      );
+    }
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => Container(
+        color: SportifyColors.surface,
+        child: const Icon(Icons.album, size: 120, color: SportifyColors.textSecondary),
+      ),
+    );
+  }
+}
+
+class _ShareAction extends StatelessWidget {
+  const _ShareAction({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        CircleAvatar(
+          radius: 24,
+          backgroundColor: SportifyColors.textPrimary,
+          child: Icon(icon, color: SportifyColors.background),
+        ),
+        const SizedBox(height: SportifySpacing.xs),
+        Text(
+          label,
+          style: const TextStyle(color: SportifyColors.textPrimary, fontSize: 12),
+        ),
+      ],
+    );
   }
 }
