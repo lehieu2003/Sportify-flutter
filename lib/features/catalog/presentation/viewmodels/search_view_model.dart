@@ -9,6 +9,9 @@ class SearchUiState {
     required this.items,
     required this.query,
     required this.nextCursor,
+    required this.discoverCards,
+    required this.browseCategories,
+    required this.recentSearches,
     this.errorMessage,
   });
 
@@ -17,12 +20,18 @@ class SearchUiState {
       items = const <CatalogTrack>[],
       query = '',
       nextCursor = null,
+      discoverCards = const <SearchBrowseCard>[],
+      browseCategories = const <SearchBrowseCard>[],
+      recentSearches = const <SearchRecentItem>[],
       errorMessage = null;
 
   final bool isLoading;
   final List<CatalogTrack> items;
   final String query;
   final String? nextCursor;
+  final List<SearchBrowseCard> discoverCards;
+  final List<SearchBrowseCard> browseCategories;
+  final List<SearchRecentItem> recentSearches;
   final String? errorMessage;
 
   SearchUiState copyWith({
@@ -30,6 +39,9 @@ class SearchUiState {
     List<CatalogTrack>? items,
     String? query,
     String? nextCursor,
+    List<SearchBrowseCard>? discoverCards,
+    List<SearchBrowseCard>? browseCategories,
+    List<SearchRecentItem>? recentSearches,
     String? errorMessage,
   }) {
     return SearchUiState(
@@ -37,6 +49,9 @@ class SearchUiState {
       items: items ?? this.items,
       query: query ?? this.query,
       nextCursor: nextCursor,
+      discoverCards: discoverCards ?? this.discoverCards,
+      browseCategories: browseCategories ?? this.browseCategories,
+      recentSearches: recentSearches ?? this.recentSearches,
       errorMessage: errorMessage,
     );
   }
@@ -51,7 +66,37 @@ class SearchViewModel extends ChangeNotifier {
 
   SearchUiState get state => _state;
 
+  Future<void> loadLanding() async {
+    try {
+      final results = await Future.wait<dynamic>(<Future<dynamic>>[
+        _repository.getSearchBrowse(),
+        _repository.getRecentSearches(limit: 20),
+      ]);
+      final browse = results[0] as SearchBrowsePayload;
+      final recent = results[1] as List<SearchRecentItem>;
+      _state = _state.copyWith(
+        discoverCards: browse.discoverCards,
+        browseCategories: browse.browseCategories,
+        recentSearches: recent,
+        errorMessage: null,
+      );
+      notifyListeners();
+    } catch (_) {}
+  }
+
   Future<void> search(String query) async {
+    if (query.trim().isEmpty) {
+      _state = _state.copyWith(
+        isLoading: false,
+        query: '',
+        items: const <CatalogTrack>[],
+        nextCursor: null,
+        errorMessage: null,
+      );
+      notifyListeners();
+      await loadLanding();
+      return;
+    }
     _state = _state.copyWith(isLoading: true, query: query, errorMessage: null);
     notifyListeners();
 
@@ -100,5 +145,30 @@ class SearchViewModel extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  Future<void> addRecentFromTrack(CatalogTrack track) async {
+    final albumId = track.albumId;
+    if (albumId == null || albumId.isEmpty) return;
+    try {
+      await _repository.upsertRecentSearch(
+        type: 'album',
+        itemId: albumId,
+        title: track.albumTitle?.trim().isNotEmpty == true ? track.albumTitle! : track.title,
+        subtitle: track.artist,
+        imageUrl: track.coverUrl,
+      );
+      await loadLanding();
+    } catch (_) {}
+  }
+
+  Future<void> removeRecent(String recentId) async {
+    try {
+      await _repository.deleteRecentSearch(recentId);
+      _state = _state.copyWith(
+        recentSearches: _state.recentSearches.where((it) => it.id != recentId).toList(growable: false),
+      );
+      notifyListeners();
+    } catch (_) {}
   }
 }

@@ -69,16 +69,16 @@ class HomeViewModel extends ChangeNotifier {
   HomeUiState get state => _state;
 
   HomeMediaItem _toItem(Track track) {
-    final albumTitle = track.albumTitle?.trim() ?? '';
-    final displayTitle = albumTitle.isNotEmpty ? albumTitle : track.title;
     final albumId = track.albumId?.trim();
     return HomeMediaItem(
       id: albumId != null && albumId.isNotEmpty ? albumId : track.id,
-      title: displayTitle,
+      title: track.title,
       subtitle: track.subtitle,
       imageUrl: track.thumbnailUrl,
       audioUrl: track.audioUrl,
       albumId: albumId,
+      trackCount: track.trackCount,
+      latestTrackId: track.latestTrackId,
     );
   }
 
@@ -87,7 +87,10 @@ class HomeViewModel extends ChangeNotifier {
     final unique = <String, HomeMediaItem>{};
     for (final item in mapped) {
       final albumId = item.albumId?.trim();
-      final key = (albumId != null && albumId.isNotEmpty) ? 'album:$albumId' : 'track:${item.id}';
+      if (albumId == null || albumId.isEmpty) {
+        continue;
+      }
+      final key = 'album:$albumId';
       unique.putIfAbsent(key, () => item);
     }
     return <HomeMediaItem>[...unique.values];
@@ -101,7 +104,7 @@ class HomeViewModel extends ChangeNotifier {
       madeForYou: _toAlbumItems(feed.madeForYou),
       trending: _toAlbumItems(feed.trending),
       newReleases: _toAlbumItems(feed.newReleases),
-      genres: _toAlbumItems(feed.genres),
+      genres: feed.genres.map(_toItem).toList(growable: false),
       errorMessage: null,
     );
   }

@@ -93,6 +93,30 @@ class PlaybackApiService {
     return payload;
   }
 
+  Future<Map<String, dynamic>> reorderQueue({
+    required int fromIndex,
+    required int toIndex,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playback/queue/reorder');
+    final response = await _client.patch(
+      uri,
+      headers: const <String, String>{'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode(<String, dynamic>{
+        'fromIndex': fromIndex,
+        'toIndex': toIndex,
+      }),
+    );
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to reorder playback queue.',
+      );
+    }
+    return payload;
+  }
+
   Future<Map<String, dynamic>> next() async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playback/next');
     final response = await _client.post(uri);

@@ -486,6 +486,63 @@ class PlayerViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> reorderQueue({required int fromIndex, required int toIndex}) async {
+    final queue = _state.queue;
+    if (queue.length <= 1) return;
+    if (fromIndex < 0 || fromIndex >= queue.length || toIndex < 0 || toIndex >= queue.length) {
+      return;
+    }
+    if (fromIndex == toIndex) return;
+
+    final updatedQueue = List<PlayerTrack>.from(queue);
+    final moved = updatedQueue.removeAt(fromIndex);
+    updatedQueue.insert(toIndex, moved);
+
+    var nextIndex = _state.queueIndex;
+    if (nextIndex == fromIndex) {
+      nextIndex = toIndex;
+    } else if (fromIndex < nextIndex && toIndex >= nextIndex) {
+      nextIndex -= 1;
+    } else if (fromIndex > nextIndex && toIndex <= nextIndex) {
+      nextIndex += 1;
+    }
+    nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
+
+    try {
+      final wasPlaying = _state.isPlaying;
+      final sources = updatedQueue
+          .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+          .toList(growable: false);
+      await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
+      if (wasPlaying) {
+        await _audioPlayer.play();
+      } else {
+        await _audioPlayer.pause();
+      }
+      final currentTrack = updatedQueue[nextIndex];
+      _state = _state.copyWith(
+        queue: updatedQueue,
+        queueIndex: nextIndex,
+        currentTrack: currentTrack,
+        isPlaying: wasPlaying,
+        errorMessage: null,
+      );
+      notifyListeners();
+      await _playbackRepository.reorderQueue(fromIndex: fromIndex, toIndex: toIndex);
+      await _playbackRepository.updateState(
+        currentTrackId: currentTrack.id,
+        queueIndex: nextIndex,
+        isPlaying: wasPlaying,
+        positionMs: _audioPlayer.position.inMilliseconds,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
+      );
+    } catch (_) {
+      _state = _state.copyWith(errorMessage: 'Failed to reorder queue.');
+      notifyListeners();
+    }
+  }
+
   Future<void> toggleShuffle() async {
     final next = !_state.shuffleEnabled;
     _state = _state.copyWith(shuffleEnabled: next, errorMessage: null);

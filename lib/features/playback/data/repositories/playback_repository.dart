@@ -38,4 +38,8 @@ class PlaybackRepository {
 
   Future<Map<String, dynamic>> next() => _service.next();
   Future<Map<String, dynamic>> previous() => _service.previous();
+  Future<Map<String, dynamic>> reorderQueue({
+    required int fromIndex,
+    required int toIndex,
+  }) => _service.reorderQueue(fromIndex: fromIndex, toIndex: toIndex);
 }

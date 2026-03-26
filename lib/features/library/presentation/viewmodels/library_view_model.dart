@@ -9,6 +9,8 @@ class LibraryUiState {
     required this.isLoading,
     required this.items,
     required this.playlists,
+    required this.albums,
+    required this.artists,
     this.errorMessage,
   });
 
@@ -16,23 +18,31 @@ class LibraryUiState {
     : isLoading = false,
       items = const <LibraryTrack>[],
       playlists = const <LibraryPlaylist>[],
+      albums = const <LibraryAlbum>[],
+      artists = const <LibraryArtist>[],
       errorMessage = null;
 
   final bool isLoading;
   final List<LibraryTrack> items;
   final List<LibraryPlaylist> playlists;
+  final List<LibraryAlbum> albums;
+  final List<LibraryArtist> artists;
   final String? errorMessage;
 
   LibraryUiState copyWith({
     bool? isLoading,
     List<LibraryTrack>? items,
     List<LibraryPlaylist>? playlists,
+    List<LibraryAlbum>? albums,
+    List<LibraryArtist>? artists,
     String? errorMessage,
   }) {
     return LibraryUiState(
       isLoading: isLoading ?? this.isLoading,
       items: items ?? this.items,
       playlists: playlists ?? this.playlists,
+      albums: albums ?? this.albums,
+      artists: artists ?? this.artists,
       errorMessage: errorMessage,
     );
   }
@@ -42,11 +52,9 @@ class LibraryViewModel extends ChangeNotifier {
   LibraryViewModel({
     required LibraryRepository repository,
     required PlaylistRepository playlistRepository,
-  }) : _repository = repository,
-       _playlistRepository = playlistRepository;
+  }) : _repository = repository;
 
   final LibraryRepository _repository;
-  final PlaylistRepository _playlistRepository;
   LibraryUiState _state = const LibraryUiState.initial();
 
   LibraryUiState get state => _state;
@@ -55,21 +63,18 @@ class LibraryViewModel extends ChangeNotifier {
     _state = _state.copyWith(isLoading: true, errorMessage: null);
     notifyListeners();
     try {
-      final itemsFuture = _repository.getSavedTracks(limit: 100);
-      final playlistsFuture = _playlistRepository.listPlaylists(limit: 50);
       final results = await Future.wait<dynamic>(<Future<dynamic>>[
-        itemsFuture,
-        playlistsFuture,
+        _repository.getSavedTracks(limit: 100),
+        _repository.getOwnedPlaylists(limit: 50),
+        _repository.getSavedAlbums(limit: 50),
+        _repository.getFollowedArtists(limit: 50),
       ]);
-      final items = results[0] as List<LibraryTrack>;
-      final playlistsRaw = results[1] as List<Map<String, dynamic>>;
-      final playlists = playlistsRaw
-          .map(LibraryPlaylist.fromJson)
-          .toList(growable: false);
       _state = _state.copyWith(
         isLoading: false,
-        items: items,
-        playlists: playlists,
+        items: results[0] as List<LibraryTrack>,
+        playlists: (results[1] as CursorPage<LibraryPlaylist>).items,
+        albums: (results[2] as CursorPage<LibraryAlbum>).items,
+        artists: (results[3] as CursorPage<LibraryArtist>).items,
         errorMessage: null,
       );
     } catch (_) {

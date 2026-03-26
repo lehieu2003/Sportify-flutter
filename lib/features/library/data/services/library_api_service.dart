@@ -20,6 +20,75 @@ class LibraryApiService {
     return payload.map(LibraryTrack.fromJson).toList(growable: false);
   }
 
+  Future<CursorPage<LibraryAlbum>> getSavedAlbums({int limit = 20, String? cursor}) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/albums',
+    ).replace(queryParameters: <String, String>{
+      'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    });
+    final response = await _client.get(uri);
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to load saved albums.',
+      );
+    }
+    final items = (payload['items'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(LibraryAlbum.fromJson)
+        .toList(growable: false);
+    return CursorPage(items: items, nextCursor: payload['nextCursor'] as String?);
+  }
+
+  Future<CursorPage<LibraryArtist>> getFollowedArtists({int limit = 20, String? cursor}) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/artists',
+    ).replace(queryParameters: <String, String>{
+      'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    });
+    final response = await _client.get(uri);
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to load followed artists.',
+      );
+    }
+    final items = (payload['items'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(LibraryArtist.fromJson)
+        .toList(growable: false);
+    return CursorPage(items: items, nextCursor: payload['nextCursor'] as String?);
+  }
+
+  Future<CursorPage<LibraryPlaylist>> getOwnedPlaylists({int limit = 20, String? cursor}) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/playlists',
+    ).replace(queryParameters: <String, String>{
+      'limit': '$limit',
+      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+    });
+    final response = await _client.get(uri);
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to load library playlists.',
+      );
+    }
+    final items = (payload['items'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(LibraryPlaylist.fromJson)
+        .toList(growable: false);
+    return CursorPage(items: items, nextCursor: payload['nextCursor'] as String?);
+  }
+
   Future<void> saveTrack(String trackId) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/tracks/$trackId/save');
     final response = await _client.post(uri);

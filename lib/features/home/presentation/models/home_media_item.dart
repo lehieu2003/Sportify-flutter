@@ -6,6 +6,8 @@ class HomeMediaItem {
     required this.imageUrl,
     this.audioUrl = '',
     this.albumId,
+    this.trackCount,
+    this.latestTrackId,
   });
 
   final String id;
@@ -14,4 +16,6 @@ class HomeMediaItem {
   final String imageUrl;
   final String audioUrl;
   final String? albumId;
+  final int? trackCount;
+  final String? latestTrackId;
 }

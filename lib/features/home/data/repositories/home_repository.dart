@@ -72,13 +72,24 @@ class HomeRepository implements HomeTracksRepository {
   }
 
   Track _mapRemoteTrack(Map<String, dynamic> json) {
-    final title = (json['title'] ?? '').toString();
+    final albumTitle = (json['albumTitle'] ?? json['album_title'] ?? '').toString();
+    final title = albumTitle.trim().isNotEmpty
+        ? albumTitle
+        : (json['title'] ?? '').toString();
     return Track(
       id: json['id'].toString(),
       title: title.trim().isNotEmpty ? title : 'Untitled track',
       subtitle: (json['artist'] ?? json['artist_name'] ?? 'Unknown artist').toString(),
       thumbnailUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
       audioUrl: ApiConfig.resolveUrl((json['audioUrl'] ?? json['audio_url'])?.toString()),
+      albumId: (json['albumId'] ?? json['album_id'])?.toString(),
+      albumTitle: albumTitle.trim().isEmpty ? null : albumTitle,
+      trackCount: switch (json['trackCount'] ?? json['track_count']) {
+        int value => value,
+        String value => int.tryParse(value),
+        _ => null,
+      },
+      latestTrackId: (json['latestTrackId'] ?? json['latest_track_id'])?.toString(),
     );
   }
 

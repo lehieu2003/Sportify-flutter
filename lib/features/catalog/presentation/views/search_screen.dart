@@ -18,23 +18,16 @@ class _SearchScreenState extends State<SearchScreen> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
 
-  static const _discoverCards = <({String title, String seed})>[
-    (title: 'Nhạc dành cho bạn', seed: 'discover-for-you'),
-    (title: '#vietnamese trap', seed: 'discover-vn-trap'),
-    (title: '#royalcore', seed: 'discover-royalcore'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SearchViewModel>().loadLanding();
+    });
+  }
 
-  static const _browseCards = <({String title, Color color, String seed})>[
-    (title: 'Nhạc', color: Color(0xFFD84093), seed: 'browse-music'),
-    (title: 'Podcast', color: Color(0xFF00685F), seed: 'browse-podcast'),
-    (title: 'Sự kiện trực tiếp', color: Color(0xFF5B189E), seed: 'browse-live'),
-    (title: 'Dành cho bạn', color: Color(0xFF584270), seed: 'browse-for-you'),
-  ];
-
-  Future<void> _playFromSearch(
-    CatalogTrack track,
-    List<CatalogTrack> items,
-  ) async {
+  Future<void> _playFromSearch(CatalogTrack track, List<CatalogTrack> items) async {
     final messenger = ScaffoldMessenger.of(context);
     if (track.audioUrl.trim().isEmpty) {
       messenger.showSnackBar(
@@ -79,7 +72,17 @@ class _SearchScreenState extends State<SearchScreen> {
         !state.isLoading;
   }
 
-  Widget _buildDefaultState() {
+  Color _parseHexColor(String? hex, Color fallback) {
+    if (hex == null || hex.isEmpty) return fallback;
+    final value = hex.replaceAll('#', '');
+    if (value.length != 6) return fallback;
+    return Color(int.parse('FF$value', radix: 16));
+  }
+
+  Widget _buildDefaultState(SearchUiState state, SearchViewModel vm) {
+    final discoverCards = state.discoverCards;
+    final browseCards = state.browseCategories;
+    final recents = state.recentSearches;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         SportifySpacing.md,
@@ -102,56 +105,123 @@ class _SearchScreenState extends State<SearchScreen> {
           height: 180,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _discoverCards.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(width: SportifySpacing.md),
+            itemCount: discoverCards.length,
+            separatorBuilder: (_, _) => const SizedBox(width: SportifySpacing.md),
             itemBuilder: (context, index) {
-              final card = _discoverCards[index];
-              return Container(
-                width: 128,
-                decoration: BoxDecoration(
-                  color: SportifyColors.card,
+              final card = discoverCards[index];
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
                   borderRadius: BorderRadius.circular(12),
-                ),
-                child: Stack(
-                  children: <Widget>[
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: <Color>[
-                                Colors.white.withValues(alpha: 0.06),
-                                Colors.black.withValues(alpha: 0.4),
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
+                  onTap: () {
+                    if (card.deeplinkType == 'album' && card.deeplinkId.isNotEmpty) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AlbumDetailScreen(
+                            albumId: card.deeplinkId,
+                            initialTitle: card.title,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    width: 128,
+                    decoration: BoxDecoration(
+                      color: SportifyColors.card,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Stack(
+                      children: <Widget>[
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: card.imageUrl.trim().isEmpty
+                                ? const SizedBox.shrink()
+                                : Image.network(
+                                    card.imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                                  ),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: <Color>[
+                                  Colors.black.withValues(alpha: 0.1),
+                                  Colors.black.withValues(alpha: 0.55),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 10,
-                      right: 10,
-                      bottom: 10,
-                      child: Text(
-                        card.title,
-                        style: const TextStyle(
-                          color: SportifyColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                          height: 1.15,
+                        Positioned(
+                          left: 10,
+                          right: 10,
+                          bottom: 10,
+                          child: Text(
+                            card.title,
+                            style: const TextStyle(
+                              color: SportifyColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              height: 1.15,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               );
             },
           ),
         ),
+        if (recents.isNotEmpty) ...<Widget>[
+          const SizedBox(height: SportifySpacing.lg),
+          const Text(
+            'Recent searches',
+            style: TextStyle(
+              color: SportifyColors.textPrimary,
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: SportifySpacing.sm),
+          ...recents.map(
+            (item) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              onTap: () {
+                if (item.type == 'album' && item.itemId.isNotEmpty) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => AlbumDetailScreen(
+                        albumId: item.itemId,
+                        initialTitle: item.title,
+                      ),
+                    ),
+                  );
+                }
+              },
+              leading: CircleAvatar(
+                backgroundColor: SportifyColors.card,
+                backgroundImage: item.imageUrl.trim().isEmpty ? null : NetworkImage(item.imageUrl),
+                child: item.imageUrl.trim().isEmpty ? const Icon(Icons.album) : null,
+              ),
+              title: Text(item.title),
+              subtitle: Text(item.subtitle),
+              trailing: IconButton(
+                onPressed: () => vm.removeRecent(item.id),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: SportifySpacing.lg),
         const Text(
           'Duyệt tìm tất cả',
@@ -166,7 +236,7 @@ class _SearchScreenState extends State<SearchScreen> {
         GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
-          itemCount: _browseCards.length,
+          itemCount: browseCards.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: SportifySpacing.md,
@@ -174,10 +244,10 @@ class _SearchScreenState extends State<SearchScreen> {
             childAspectRatio: 1.55,
           ),
           itemBuilder: (context, index) {
-            final card = _browseCards[index];
+            final card = browseCards[index];
             return Container(
               decoration: BoxDecoration(
-                color: card.color,
+                color: _parseHexColor(card.colorHex, const Color(0xFF584270)),
                 borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.all(SportifySpacing.md),
@@ -252,9 +322,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: SportifySpacing.md,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: SportifySpacing.md),
                 child: TextField(
                   controller: _controller,
                   focusNode: _focusNode,
@@ -296,7 +364,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             if (_shouldShowDefaultState(state))
-              SliverFillRemaining(child: _buildDefaultState())
+              SliverFillRemaining(child: _buildDefaultState(state, vm))
             else
               SliverList.builder(
                 itemCount: state.items.length + 1,
@@ -322,6 +390,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         _playFromSearch(track, state.items);
                         return;
                       }
+                      vm.addRecentFromTrack(track);
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => AlbumDetailScreen(

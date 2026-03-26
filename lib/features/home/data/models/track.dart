@@ -9,6 +9,8 @@ class Track {
     required this.audioUrl,
     this.albumId,
     this.albumTitle,
+    this.trackCount,
+    this.latestTrackId,
   });
 
   final String id;
@@ -18,6 +20,8 @@ class Track {
   final String audioUrl;
   final String? albumId;
   final String? albumTitle;
+  final int? trackCount;
+  final String? latestTrackId;
 
   factory Track.fromJson(Map<String, dynamic> json) {
     final title = (json['title'] ?? json['name'] ?? '').toString();
@@ -38,6 +42,12 @@ class Track {
       ),
       albumId: (json['albumId'] ?? json['album_id'])?.toString(),
       albumTitle: (json['albumTitle'] ?? json['album_title'])?.toString(),
+      trackCount: switch (json['trackCount'] ?? json['track_count']) {
+        int value => value,
+        String value => int.tryParse(value),
+        _ => null,
+      },
+      latestTrackId: (json['latestTrackId'] ?? json['latest_track_id'])?.toString(),
     );
   }
 
@@ -50,6 +60,8 @@ class Track {
       'audioUrl': audioUrl,
       'albumId': albumId,
       'albumTitle': albumTitle,
+      'trackCount': trackCount,
+      'latestTrackId': latestTrackId,
     };
   }
 }

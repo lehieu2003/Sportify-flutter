@@ -45,6 +45,71 @@ class CatalogTracksPage {
   final String? nextCursor;
 }
 
+class SearchBrowseCard {
+  const SearchBrowseCard({
+    required this.title,
+    required this.imageUrl,
+    required this.deeplinkType,
+    required this.deeplinkId,
+    this.colorHex,
+  });
+
+  final String title;
+  final String imageUrl;
+  final String deeplinkType;
+  final String deeplinkId;
+  final String? colorHex;
+
+  factory SearchBrowseCard.fromJson(Map<String, dynamic> json) {
+    return SearchBrowseCard(
+      title: (json['title'] ?? '').toString(),
+      imageUrl: ApiConfig.resolveUrl(json['imageUrl']?.toString()),
+      deeplinkType: (json['deeplinkType'] ?? '').toString(),
+      deeplinkId: (json['deeplinkId'] ?? '').toString(),
+      colorHex: json['colorHex']?.toString(),
+    );
+  }
+}
+
+class SearchBrowsePayload {
+  const SearchBrowsePayload({
+    required this.discoverCards,
+    required this.browseCategories,
+  });
+
+  final List<SearchBrowseCard> discoverCards;
+  final List<SearchBrowseCard> browseCategories;
+}
+
+class SearchRecentItem {
+  const SearchRecentItem({
+    required this.id,
+    required this.type,
+    required this.itemId,
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+  });
+
+  final String id;
+  final String type;
+  final String itemId;
+  final String title;
+  final String subtitle;
+  final String imageUrl;
+
+  factory SearchRecentItem.fromJson(Map<String, dynamic> json) {
+    return SearchRecentItem(
+      id: (json['id'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+      itemId: (json['itemId'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      subtitle: (json['subtitle'] ?? '').toString(),
+      imageUrl: ApiConfig.resolveUrl(json['imageUrl']?.toString()),
+    );
+  }
+}
+
 class CatalogArtist {
   const CatalogArtist({
     required this.id,

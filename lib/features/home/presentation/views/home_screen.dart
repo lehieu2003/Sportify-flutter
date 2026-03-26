@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
-import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../catalog/presentation/views/album_detail_screen.dart';
 import '../models/home_media_item.dart';
@@ -34,15 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openAlbum(BuildContext context, HomeMediaItem item) async {
-    String? albumId = item.albumId?.trim();
-    if (albumId == null || albumId.isEmpty) {
-      try {
-        final track = await context.read<CatalogRepository>().getTrackById(item.id);
-        albumId = track.albumId?.trim();
-      } catch (_) {
-        albumId = null;
-      }
-    }
+    final albumId = item.albumId?.trim();
     if (albumId == null || albumId.isEmpty) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
@@ -54,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) =>
-            AlbumDetailScreen(albumId: albumId!, initialTitle: item.title),
+            AlbumDetailScreen(albumId: albumId, initialTitle: item.title),
       ),
     );
   }
@@ -77,6 +68,41 @@ class _HomeScreenState extends State<HomeScreen> {
         final state = vm.state;
         if (state.isLoading && state.trending.isEmpty) {
           return const HomeSkeleton();
+        }
+        final hasAnyAlbums = state.quickAccess.isNotEmpty ||
+            state.recentlyPlayed.isNotEmpty ||
+            state.madeForYou.isNotEmpty ||
+            state.trending.isNotEmpty ||
+            state.newReleases.isNotEmpty;
+        if (!hasAnyAlbums && !state.isLoading) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(SportifySpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const Text(
+                    'No albums yet',
+                    style: TextStyle(
+                      color: SportifyColors.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: SportifySpacing.sm),
+                  const Text(
+                    'Pull to refresh or play something first.',
+                    style: TextStyle(color: SportifyColors.textSecondary),
+                  ),
+                  const SizedBox(height: SportifySpacing.md),
+                  OutlinedButton(
+                    onPressed: _onRefresh,
+                    child: const Text('Refresh'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         return RefreshIndicator(

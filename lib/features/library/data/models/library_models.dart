@@ -63,3 +63,70 @@ class LibraryPlaylist {
     );
   }
 }
+
+class LibraryAlbum {
+  const LibraryAlbum({
+    required this.id,
+    required this.title,
+    required this.artist,
+    required this.coverUrl,
+    required this.trackCount,
+  });
+
+  final String id;
+  final String title;
+  final String artist;
+  final String coverUrl;
+  final int trackCount;
+
+  factory LibraryAlbum.fromJson(Map<String, dynamic> json) {
+    return LibraryAlbum(
+      id: (json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      artist: (json['artist'] ?? '').toString(),
+      coverUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
+      trackCount: switch (json['trackCount']) {
+        int value => value,
+        String value => int.tryParse(value) ?? 0,
+        _ => 0,
+      },
+    );
+  }
+}
+
+class LibraryArtist {
+  const LibraryArtist({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+    required this.albumCount,
+  });
+
+  final String id;
+  final String name;
+  final String imageUrl;
+  final int albumCount;
+
+  factory LibraryArtist.fromJson(Map<String, dynamic> json) {
+    return LibraryArtist(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      imageUrl: ApiConfig.resolveUrl((json['imageUrl'] ?? json['image_url'])?.toString()),
+      albumCount: switch (json['albumCount']) {
+        int value => value,
+        String value => int.tryParse(value) ?? 0,
+        _ => 0,
+      },
+    );
+  }
+}
+
+class CursorPage<T> {
+  const CursorPage({
+    required this.items,
+    required this.nextCursor,
+  });
+
+  final List<T> items;
+  final String? nextCursor;
+}

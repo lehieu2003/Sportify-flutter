@@ -10,6 +10,18 @@ class LibraryRepository {
     return _service.getSavedTracks(limit: limit);
   }
 
+  Future<CursorPage<LibraryAlbum>> getSavedAlbums({int limit = 20, String? cursor}) {
+    return _service.getSavedAlbums(limit: limit, cursor: cursor);
+  }
+
+  Future<CursorPage<LibraryArtist>> getFollowedArtists({int limit = 20, String? cursor}) {
+    return _service.getFollowedArtists(limit: limit, cursor: cursor);
+  }
+
+  Future<CursorPage<LibraryPlaylist>> getOwnedPlaylists({int limit = 20, String? cursor}) {
+    return _service.getOwnedPlaylists(limit: limit, cursor: cursor);
+  }
+
   Future<void> saveTrack(String trackId) => _service.saveTrack(trackId);
   Future<void> unsaveTrack(String trackId) => _service.unsaveTrack(trackId);
   Future<void> saveAlbum(String albumId) => _service.saveAlbum(albumId);
