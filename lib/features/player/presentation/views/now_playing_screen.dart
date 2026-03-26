@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
@@ -38,7 +39,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         buildDefaultDragHandles: false,
                         itemCount: state.queue.length,
                         onReorder: (oldIndex, newIndex) {
+                          if (state.queue.length <= 1) return;
                           final targetIndex = oldIndex < newIndex ? newIndex - 1 : newIndex;
+                          HapticFeedback.mediumImpact();
                           queueVm.reorderQueue(fromIndex: oldIndex, toIndex: targetIndex);
                         },
                         itemBuilder: (context, index) {
@@ -64,13 +67,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                       : () => queueVm.removeFromQueueAt(index),
                                   icon: const Icon(Icons.remove_circle_outline),
                                 ),
-                                ReorderableDragStartListener(
-                                  index: index,
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 8),
-                                    child: Icon(Icons.drag_handle),
+                                if (state.queue.length > 1)
+                                  ReorderableDragStartListener(
+                                    index: index,
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 8),
+                                      child: Icon(Icons.drag_handle),
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           );

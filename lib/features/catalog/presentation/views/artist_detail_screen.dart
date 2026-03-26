@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
+import '../../../library/data/models/library_models.dart';
+import '../../../library/data/repositories/library_repository.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
 import '../../data/models/catalog_models.dart';
 import '../../data/repositories/catalog_repository.dart';
@@ -27,6 +29,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
   CatalogArtist? _artist;
   List<CatalogTrack> _topTracks = const <CatalogTrack>[];
   List<CatalogTrack> _albums = const <CatalogTrack>[];
+  bool _isFollowing = false;
+  bool _isTogglingFollow = false;
+  bool _isLoadingMoreAlbums = false;
+  String? _albumsNextCursor;
 
   @override
   void initState() {
@@ -41,16 +47,23 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     });
     try {
       final repository = context.read<CatalogRepository>();
+      final libraryRepository = context.read<LibraryRepository>();
       final results = await Future.wait<dynamic>(<Future<dynamic>>[
         repository.getArtistById(widget.artistId),
         repository.getArtistTopTracks(widget.artistId, limit: 10),
         repository.getArtistAlbums(artistId: widget.artistId, limit: 20),
+        libraryRepository.getFollowedArtists(limit: 100),
       ]);
       if (!mounted) return;
+      final followed = (results[3] as CursorPage<LibraryArtist>).items
+          .any((item) => item.id == widget.artistId);
+      final albumPage = results[2] as CatalogTracksPage;
       setState(() {
         _artist = results[0] as CatalogArtist;
         _topTracks = results[1] as List<CatalogTrack>;
-        _albums = (results[2] as CatalogTracksPage).items;
+        _albums = albumPage.items;
+        _albumsNextCursor = albumPage.nextCursor;
+        _isFollowing = followed;
         _isLoading = false;
       });
     } catch (_) {
@@ -83,6 +96,68 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     final error = vm.state.errorMessage;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    if (_isTogglingFollow) return;
+    setState(() {
+      _isTogglingFollow = true;
+    });
+    final repository = context.read<LibraryRepository>();
+    try {
+      if (_isFollowing) {
+        await repository.unfollowArtist(widget.artistId);
+      } else {
+        await repository.followArtist(widget.artistId);
+      }
+      if (!mounted) return;
+      setState(() {
+        _isFollowing = !_isFollowing;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to update follow state.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTogglingFollow = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreAlbums() async {
+    if (_isLoadingMoreAlbums || _albumsNextCursor == null || _albumsNextCursor!.isEmpty) {
+      return;
+    }
+    setState(() {
+      _isLoadingMoreAlbums = true;
+    });
+    try {
+      final page = await context.read<CatalogRepository>().getArtistAlbums(
+        artistId: widget.artistId,
+        limit: 20,
+        cursor: _albumsNextCursor,
+      );
+      if (!mounted) return;
+      setState(() {
+        _albums = <CatalogTrack>[..._albums, ...page.items];
+        _albumsNextCursor = page.nextCursor;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to load more albums.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMoreAlbums = false;
+        });
+      }
     }
   }
 
@@ -125,9 +200,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                     padding: const EdgeInsets.all(SportifySpacing.md),
                     child: Row(
                       children: <Widget>[
-                        OutlinedButton(
-                          onPressed: () {},
-                          child: const Text('Follow'),
+                        OutlinedButton.icon(
+                          onPressed: _isTogglingFollow ? null : _toggleFollow,
+                          icon: Icon(_isFollowing ? Icons.check : Icons.add),
+                          label: Text(_isFollowing ? 'Following' : 'Follow'),
                         ),
                         const Spacer(),
                         IconButton(
@@ -159,7 +235,43 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                   itemBuilder: (context, index) {
                     final track = _topTracks[index];
                     return ListTile(
-                      leading: Text('${index + 1}'),
+                      leading: SizedBox(
+                        width: 56,
+                        child: Row(
+                          children: <Widget>[
+                            SizedBox(
+                              width: 18,
+                              child: Text(
+                                '${index + 1}',
+                                style: const TextStyle(color: SportifyColors.textSecondary),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: track.coverUrl.trim().isEmpty
+                                  ? Container(
+                                      width: 28,
+                                      height: 28,
+                                      color: SportifyColors.card,
+                                      child: const Icon(Icons.music_note, size: 14),
+                                    )
+                                  : Image.network(
+                                      track.coverUrl,
+                                      width: 28,
+                                      height: 28,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(
+                                        width: 28,
+                                        height: 28,
+                                        color: SportifyColors.card,
+                                        child: const Icon(Icons.music_note, size: 14),
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
                       title: Text(track.title),
                       subtitle: Text(track.artist),
                       trailing: const Icon(Icons.more_vert),
@@ -204,6 +316,17 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                             },
                     );
                   },
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: SportifySpacing.md),
+                    child: OutlinedButton(
+                      onPressed: (_albumsNextCursor == null || _albumsNextCursor!.isEmpty || _isLoadingMoreAlbums)
+                          ? null
+                          : _loadMoreAlbums,
+                      child: Text(_isLoadingMoreAlbums ? 'Loading...' : 'Load more albums'),
+                    ),
+                  ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],

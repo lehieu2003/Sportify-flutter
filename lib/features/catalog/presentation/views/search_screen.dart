@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../playlists/presentation/views/playlist_detail_screen.dart';
 import '../../data/models/catalog_models.dart';
 import 'album_detail_screen.dart';
+import 'artist_detail_screen.dart';
 import '../viewmodels/search_view_model.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -79,6 +81,63 @@ class _SearchScreenState extends State<SearchScreen> {
     return Color(int.parse('FF$value', radix: 16));
   }
 
+  void _openDeeplink({
+    required String type,
+    required String id,
+    required String title,
+  }) {
+    if (id.trim().isEmpty) {
+      return;
+    }
+    final normalizedType = type.trim().toLowerCase();
+    if (normalizedType == 'album') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AlbumDetailScreen(
+            albumId: id,
+            initialTitle: title,
+          ),
+        ),
+      );
+      return;
+    }
+    if (normalizedType == 'artist') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ArtistDetailScreen(
+            artistId: id,
+            initialName: title,
+          ),
+        ),
+      );
+      return;
+    }
+    if (normalizedType == 'playlist') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PlaylistDetailScreen(
+            playlistId: id,
+            initialTitle: title,
+          ),
+        ),
+      );
+    }
+  }
+
+  IconData _recentIconForType(String type) {
+    switch (type.trim().toLowerCase()) {
+      case 'artist':
+        return Icons.person;
+      case 'playlist':
+        return Icons.queue_music;
+      case 'track':
+        return Icons.music_note;
+      case 'album':
+      default:
+        return Icons.album;
+    }
+  }
+
   Widget _buildDefaultState(SearchUiState state, SearchViewModel vm) {
     final discoverCards = state.discoverCards;
     final browseCards = state.browseCategories;
@@ -114,16 +173,11 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
-                    if (card.deeplinkType == 'album' && card.deeplinkId.isNotEmpty) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AlbumDetailScreen(
-                            albumId: card.deeplinkId,
-                            initialTitle: card.title,
-                          ),
-                        ),
-                      );
-                    }
+                    _openDeeplink(
+                      type: card.deeplinkType,
+                      id: card.deeplinkId,
+                      title: card.title,
+                    );
                   },
                   child: Container(
                     width: 128,
@@ -197,21 +251,16 @@ class _SearchScreenState extends State<SearchScreen> {
             (item) => ListTile(
               contentPadding: EdgeInsets.zero,
               onTap: () {
-                if (item.type == 'album' && item.itemId.isNotEmpty) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => AlbumDetailScreen(
-                        albumId: item.itemId,
-                        initialTitle: item.title,
-                      ),
-                    ),
-                  );
-                }
+                _openDeeplink(
+                  type: item.type,
+                  id: item.itemId,
+                  title: item.title,
+                );
               },
               leading: CircleAvatar(
                 backgroundColor: SportifyColors.card,
                 backgroundImage: item.imageUrl.trim().isEmpty ? null : NetworkImage(item.imageUrl),
-                child: item.imageUrl.trim().isEmpty ? const Icon(Icons.album) : null,
+                child: item.imageUrl.trim().isEmpty ? Icon(_recentIconForType(item.type)) : null,
               ),
               title: Text(item.title),
               subtitle: Text(item.subtitle),
@@ -245,21 +294,32 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           itemBuilder: (context, index) {
             final card = browseCards[index];
-            return Container(
-              decoration: BoxDecoration(
-                color: _parseHexColor(card.colorHex, const Color(0xFF584270)),
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.all(SportifySpacing.md),
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Text(
-                  card.title,
-                  style: const TextStyle(
-                    color: SportifyColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    height: 1.1,
+                onTap: () => _openDeeplink(
+                  type: card.deeplinkType,
+                  id: card.deeplinkId,
+                  title: card.title,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _parseHexColor(card.colorHex, const Color(0xFF584270)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(SportifySpacing.md),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      card.title,
+                      style: const TextStyle(
+                        color: SportifyColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        height: 1.1,
+                      ),
+                    ),
                   ),
                 ),
               ),
