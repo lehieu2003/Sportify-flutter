@@ -5,6 +5,7 @@ import '../../../../core/theme/sportify_theme.dart';
 import '../../../library/data/models/library_models.dart';
 import '../../../library/data/repositories/library_repository.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../player/presentation/widgets/track_options_sheet.dart';
 import '../../data/models/catalog_models.dart';
 import '../../data/repositories/catalog_repository.dart';
 import 'album_detail_screen.dart';
@@ -55,8 +56,9 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
         libraryRepository.getFollowedArtists(limit: 100),
       ]);
       if (!mounted) return;
-      final followed = (results[3] as CursorPage<LibraryArtist>).items
-          .any((item) => item.id == widget.artistId);
+      final followed = (results[3] as CursorPage<LibraryArtist>).items.any(
+        (item) => item.id == widget.artistId,
+      );
       final albumPage = results[2] as CatalogTracksPage;
       setState(() {
         _artist = results[0] as CatalogArtist;
@@ -95,8 +97,24 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     if (!mounted) return;
     final error = vm.state.errorMessage;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
+  }
+
+  Future<void> _openTrackOptions(CatalogTrack track) async {
+    await showTrackOptionsSheet(
+      context,
+      track: TrackOptionsData(
+        trackId: track.id,
+        title: track.title,
+        artist: track.artist,
+        artistId: track.artistId,
+        audioUrl: track.audioUrl,
+        coverUrl: track.coverUrl,
+      ),
+    );
   }
 
   Future<void> _toggleFollow() async {
@@ -130,7 +148,9 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
   }
 
   Future<void> _loadMoreAlbums() async {
-    if (_isLoadingMoreAlbums || _albumsNextCursor == null || _albumsNextCursor!.isEmpty) {
+    if (_isLoadingMoreAlbums ||
+        _albumsNextCursor == null ||
+        _albumsNextCursor!.isEmpty) {
       return;
     }
     setState(() {
@@ -172,7 +192,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Text(_errorMessage!, style: const TextStyle(color: SportifyColors.error)),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: SportifyColors.error),
+                  ),
                   const SizedBox(height: SportifySpacing.sm),
                   OutlinedButton(onPressed: _load, child: const Text('Retry')),
                 ],
@@ -190,7 +213,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                         ? Image.network(
                             _artist!.imageUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(color: SportifyColors.surface),
+                            errorBuilder: (_, _, _) =>
+                                Container(color: SportifyColors.surface),
                           )
                         : Container(color: SportifyColors.surface),
                   ),
@@ -210,7 +234,11 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                           onPressed: _topTracks.isEmpty
                               ? null
                               : () => _playTopTrack(_topTracks.first),
-                          icon: const Icon(Icons.play_circle_fill, size: 56, color: SportifyColors.primary),
+                          icon: const Icon(
+                            Icons.play_circle_fill,
+                            size: 56,
+                            color: SportifyColors.primary,
+                          ),
                         ),
                       ],
                     ),
@@ -226,7 +254,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                     ),
                     child: Text(
                       'Popular',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -243,7 +274,9 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                               width: 18,
                               child: Text(
                                 '${index + 1}',
-                                style: const TextStyle(color: SportifyColors.textSecondary),
+                                style: const TextStyle(
+                                  color: SportifyColors.textSecondary,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -254,7 +287,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                                       width: 28,
                                       height: 28,
                                       color: SportifyColors.card,
-                                      child: const Icon(Icons.music_note, size: 14),
+                                      child: const Icon(
+                                        Icons.music_note,
+                                        size: 14,
+                                      ),
                                     )
                                   : Image.network(
                                       track.coverUrl,
@@ -265,7 +301,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                                         width: 28,
                                         height: 28,
                                         color: SportifyColors.card,
-                                        child: const Icon(Icons.music_note, size: 14),
+                                        child: const Icon(
+                                          Icons.music_note,
+                                          size: 14,
+                                        ),
                                       ),
                                     ),
                             ),
@@ -274,7 +313,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                       ),
                       title: Text(track.title),
                       subtitle: Text(track.artist),
-                      trailing: const Icon(Icons.more_vert),
+                      trailing: IconButton(
+                        onPressed: () => _openTrackOptions(track),
+                        icon: const Icon(Icons.more_vert),
+                      ),
                       onTap: () => _playTopTrack(track),
                     );
                   },
@@ -289,7 +331,10 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                     ),
                     child: Text(
                       'Albums',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -299,7 +344,9 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                     final album = _albums[index];
                     final albumId = album.albumId ?? album.id;
                     return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.album_outlined)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.album_outlined),
+                      ),
                       title: Text(album.albumTitle ?? album.title),
                       subtitle: Text(album.artist),
                       onTap: albumId.isEmpty
@@ -309,7 +356,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                                 MaterialPageRoute<void>(
                                   builder: (_) => AlbumDetailScreen(
                                     albumId: albumId,
-                                    initialTitle: album.albumTitle ?? album.title,
+                                    initialTitle:
+                                        album.albumTitle ?? album.title,
                                   ),
                                 ),
                               );
@@ -319,12 +367,21 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: SportifySpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SportifySpacing.md,
+                    ),
                     child: OutlinedButton(
-                      onPressed: (_albumsNextCursor == null || _albumsNextCursor!.isEmpty || _isLoadingMoreAlbums)
+                      onPressed:
+                          (_albumsNextCursor == null ||
+                              _albumsNextCursor!.isEmpty ||
+                              _isLoadingMoreAlbums)
                           ? null
                           : _loadMoreAlbums,
-                      child: Text(_isLoadingMoreAlbums ? 'Loading...' : 'Load more albums'),
+                      child: Text(
+                        _isLoadingMoreAlbums
+                            ? 'Loading...'
+                            : 'Load more albums',
+                      ),
                     ),
                   ),
                 ),

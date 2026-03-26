@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../player/presentation/widgets/track_options_sheet.dart';
 import '../../data/models/playlist_models.dart';
 import '../../data/repositories/playlist_repository.dart';
 
@@ -61,9 +62,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   Future<void> _playTrack(int index) async {
     final track = _tracks[index];
     if (track.audioUrl.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Track has no audio url.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Track has no audio url.')));
       return;
     }
     final queue = _tracks
@@ -85,8 +86,23 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     if (!mounted) return;
     final error = playerVm.state.errorMessage;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
+  }
+
+  Future<void> _openTrackOptions(PlaylistTrack track) async {
+    await showTrackOptionsSheet(
+      context,
+      track: TrackOptionsData(
+        trackId: track.trackId,
+        title: track.title,
+        artist: track.artist,
+        audioUrl: track.audioUrl,
+        coverUrl: track.coverUrl,
+      ),
+    );
   }
 
   @override
@@ -97,7 +113,12 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-          ? Center(child: Text(_errorMessage!, style: const TextStyle(color: SportifyColors.error)))
+          ? Center(
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: SportifyColors.error),
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
@@ -116,7 +137,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       ),
                       child: Text(
                         subtitle,
-                        style: const TextStyle(color: SportifyColors.textSecondary),
+                        style: const TextStyle(
+                          color: SportifyColors.textSecondary,
+                        ),
                       ),
                     );
                   }
@@ -129,7 +152,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                     ),
                     title: Text(track.title),
                     subtitle: Text(track.artist),
-                    trailing: const Icon(Icons.play_arrow),
+                    trailing: IconButton(
+                      onPressed: () => _openTrackOptions(track),
+                      icon: const Icon(Icons.more_vert),
+                    ),
                   );
                 },
               ),

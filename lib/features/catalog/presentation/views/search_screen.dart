@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/navigation/content_deeplink_navigator.dart';
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../player/presentation/widgets/track_options_sheet.dart';
 import '../../data/models/catalog_models.dart';
 import '../viewmodels/search_view_model.dart';
 
@@ -31,7 +32,10 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
-  Future<void> _playFromSearch(CatalogTrack track, List<CatalogTrack> items) async {
+  Future<void> _playFromSearch(
+    CatalogTrack track,
+    List<CatalogTrack> items,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     if (track.audioUrl.trim().isEmpty) {
       messenger.showSnackBar(
@@ -62,6 +66,20 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  Future<void> _openTrackOptions(CatalogTrack track) async {
+    await showTrackOptionsSheet(
+      context,
+      track: TrackOptionsData(
+        trackId: track.id,
+        title: track.title,
+        artist: track.artist,
+        artistId: track.artistId,
+        audioUrl: track.audioUrl,
+        coverUrl: track.coverUrl,
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -78,7 +96,9 @@ class _SearchScreenState extends State<SearchScreen> {
     }
     if (initialText.trim().isNotEmpty) {
       _controller.text = initialText.trim();
-      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
     }
     _focusNode.requestFocus();
   }
@@ -133,11 +153,7 @@ class _SearchScreenState extends State<SearchScreen> {
       await context.read<SearchViewModel>().search(item.title);
       return;
     }
-    await _openDeeplink(
-      type: item.type,
-      id: item.itemId,
-      title: item.title,
-    );
+    await _openDeeplink(type: item.type, id: item.itemId, title: item.title);
   }
 
   Color _parseHexColor(String? hex, Color fallback) {
@@ -296,7 +312,8 @@ class _SearchScreenState extends State<SearchScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: discoverCards.length,
-            separatorBuilder: (_, _) => const SizedBox(width: SportifySpacing.md),
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: SportifySpacing.md),
             itemBuilder: (context, index) {
               final card = discoverCards[index];
               return Material(
@@ -324,7 +341,8 @@ class _SearchScreenState extends State<SearchScreen> {
                                 : Image.network(
                                     card.imageUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                                    errorBuilder: (_, _, _) =>
+                                        const SizedBox.shrink(),
                                   ),
                           ),
                         ),
@@ -382,8 +400,12 @@ class _SearchScreenState extends State<SearchScreen> {
               onTap: () => _handleRecentTap(item),
               leading: CircleAvatar(
                 backgroundColor: SportifyColors.card,
-                backgroundImage: item.imageUrl.trim().isEmpty ? null : NetworkImage(item.imageUrl),
-                child: item.imageUrl.trim().isEmpty ? Icon(_recentIconForType(item.type)) : null,
+                backgroundImage: item.imageUrl.trim().isEmpty
+                    ? null
+                    : NetworkImage(item.imageUrl),
+                child: item.imageUrl.trim().isEmpty
+                    ? Icon(_recentIconForType(item.type))
+                    : null,
               ),
               title: Text(item.title),
               subtitle: Text(item.subtitle),
@@ -428,7 +450,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _parseHexColor(card.colorHex, const Color(0xFF584270)),
+                    color: _parseHexColor(
+                      card.colorHex,
+                      const Color(0xFF584270),
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.all(SportifySpacing.md),
@@ -519,8 +544,9 @@ class _SearchScreenState extends State<SearchScreen> {
                         onTap: () => _handleRecentTap(item),
                         leading: CircleAvatar(
                           backgroundColor: SportifyColors.card,
-                          backgroundImage:
-                              item.imageUrl.trim().isEmpty ? null : NetworkImage(item.imageUrl),
+                          backgroundImage: item.imageUrl.trim().isEmpty
+                              ? null
+                              : NetworkImage(item.imageUrl),
                           child: item.imageUrl.trim().isEmpty
                               ? Icon(_recentIconForType(item.type))
                               : null,
@@ -540,7 +566,8 @@ class _SearchScreenState extends State<SearchScreen> {
                   itemCount: state.items.length + 1,
                   itemBuilder: (context, index) {
                     if (index == state.items.length) {
-                      if (state.nextCursor == null || state.nextCursor!.isEmpty) {
+                      if (state.nextCursor == null ||
+                          state.nextCursor!.isEmpty) {
                         return const SizedBox(height: 48);
                       }
                       return Padding(
@@ -568,7 +595,9 @@ class _SearchScreenState extends State<SearchScreen> {
                           title: track.albumTitle ?? track.title,
                         );
                       },
-                      leading: const CircleAvatar(child: Icon(Icons.music_note)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.music_note),
+                      ),
                       title: Text(track.title),
                       subtitle: Text(
                         track.albumTitle?.trim().isNotEmpty == true
@@ -576,8 +605,8 @@ class _SearchScreenState extends State<SearchScreen> {
                             : track.artist,
                       ),
                       trailing: IconButton(
-                        onPressed: () => _playFromSearch(track, state.items),
-                        icon: const Icon(Icons.play_arrow),
+                        onPressed: () => _openTrackOptions(track),
+                        icon: const Icon(Icons.more_vert),
                       ),
                     );
                   },

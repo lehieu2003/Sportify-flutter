@@ -1,7 +1,8 @@
 import '../services/playback_api_service.dart';
 
 class PlaybackRepository {
-  PlaybackRepository({required PlaybackApiService service}) : _service = service;
+  PlaybackRepository({required PlaybackApiService service})
+    : _service = service;
 
   final PlaybackApiService _service;
 
@@ -30,10 +31,7 @@ class PlaybackRepository {
     required List<String> trackIds,
     required int currentIndex,
   }) {
-    return _service.setQueue(
-      trackIds: trackIds,
-      currentIndex: currentIndex,
-    );
+    return _service.setQueue(trackIds: trackIds, currentIndex: currentIndex);
   }
 
   Future<Map<String, dynamic>> next() => _service.next();
@@ -42,4 +40,8 @@ class PlaybackRepository {
     required int fromIndex,
     required int toIndex,
   }) => _service.reorderQueue(fromIndex: fromIndex, toIndex: toIndex);
+  Future<Map<String, dynamic>> removeFromQueue({required String trackId}) =>
+      _service.removeFromQueue(trackId: trackId);
+  Future<Map<String, dynamic>> selectQueueIndex({required int index}) =>
+      _service.selectQueueIndex(index: index);
 }

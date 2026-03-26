@@ -34,7 +34,9 @@ class PlaybackApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playback/state');
     final response = await _client.patch(
       uri,
-      headers: const <String, String>{'Content-Type': 'application/json; charset=UTF-8'},
+      headers: const <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
       body: jsonEncode(<String, dynamic>{
         if (currentTrackId != null) 'currentTrackId': currentTrackId,
         if (queueIndex != null) 'queueIndex': queueIndex,
@@ -76,7 +78,9 @@ class PlaybackApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playback/queue');
     final response = await _client.put(
       uri,
-      headers: const <String, String>{'Content-Type': 'application/json; charset=UTF-8'},
+      headers: const <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
       body: jsonEncode(<String, dynamic>{
         'trackIds': trackIds,
         'currentIndex': currentIndex,
@@ -100,7 +104,9 @@ class PlaybackApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playback/queue/reorder');
     final response = await _client.patch(
       uri,
-      headers: const <String, String>{'Content-Type': 'application/json; charset=UTF-8'},
+      headers: const <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
       body: jsonEncode(<String, dynamic>{
         'fromIndex': fromIndex,
         'toIndex': toIndex,
@@ -112,6 +118,44 @@ class PlaybackApiService {
         statusCode: response.statusCode,
         payload: payload,
         fallback: 'Failed to reorder playback queue.',
+      );
+    }
+    return payload;
+  }
+
+  Future<Map<String, dynamic>> removeFromQueue({
+    required String trackId,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/playback/queue/$trackId',
+    );
+    final response = await _client.delete(uri);
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to remove track from playback queue.',
+      );
+    }
+    return payload;
+  }
+
+  Future<Map<String, dynamic>> selectQueueIndex({required int index}) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playback/queue/select');
+    final response = await _client.post(
+      uri,
+      headers: const <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, dynamic>{'index': index}),
+    );
+    final payload = decodeJsonObject(response.body);
+    if (response.statusCode != 200) {
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to select track in playback queue.',
       );
     }
     return payload;

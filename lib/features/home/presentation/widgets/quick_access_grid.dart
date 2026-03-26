@@ -5,11 +5,7 @@ import '../models/home_media_item.dart';
 import 'artwork_box.dart';
 
 class QuickAccessGrid extends StatelessWidget {
-  const QuickAccessGrid({
-    super.key,
-    required this.items,
-    this.onItemTap,
-  });
+  const QuickAccessGrid({super.key, required this.items, this.onItemTap});
 
   final List<HomeMediaItem> items;
   final ValueChanged<HomeMediaItem>? onItemTap;
@@ -66,12 +62,6 @@ class QuickAccessGrid extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Icon(
-                      Icons.more_horiz,
-                      size: 18,
-                      color: SportifyColors.textSecondary,
-                    ),
-                    const SizedBox(width: SportifySpacing.xs),
                   ],
                 ),
               ),

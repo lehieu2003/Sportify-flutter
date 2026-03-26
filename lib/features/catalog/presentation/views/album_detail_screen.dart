@@ -5,6 +5,7 @@ import '../../../../core/theme/sportify_theme.dart';
 import '../../data/models/catalog_models.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../player/presentation/widgets/track_options_sheet.dart';
 
 class AlbumDetailScreen extends StatefulWidget {
   const AlbumDetailScreen({
@@ -83,7 +84,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     if (!mounted) return;
     final error = playerVm.state.errorMessage;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
   }
 
@@ -100,18 +103,31 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     if (!mounted) return;
     final error = playerVm.state.errorMessage;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
+  }
+
+  Future<void> _openTrackOptions(CatalogTrack track) async {
+    await showTrackOptionsSheet(
+      context,
+      track: TrackOptionsData(
+        trackId: track.id,
+        title: track.title,
+        artist: track.artist,
+        artistId: track.artistId,
+        audioUrl: track.audioUrl,
+        coverUrl: track.coverUrl,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final title = _album?.title ?? widget.initialTitle ?? 'Album';
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text(title),
-      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(title)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
@@ -119,7 +135,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Text(_errorMessage!, style: const TextStyle(color: SportifyColors.error)),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: SportifyColors.error),
+                  ),
                   const SizedBox(height: SportifySpacing.sm),
                   OutlinedButton(onPressed: _load, child: const Text('Retry')),
                 ],
@@ -185,7 +204,9 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                               backgroundColor: SportifyColors.card,
                               child: Text(
                                 (_album?.artist.isNotEmpty == true)
-                                    ? _album!.artist.substring(0, 1).toUpperCase()
+                                    ? _album!.artist
+                                          .substring(0, 1)
+                                          .toUpperCase()
                                     : 'A',
                                 style: const TextStyle(fontSize: 12),
                               ),
@@ -203,14 +224,23 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                         const SizedBox(height: SportifySpacing.sm),
                         Text(
                           _buildMetaLine(),
-                          style: const TextStyle(color: SportifyColors.textSecondary),
+                          style: const TextStyle(
+                            color: SportifyColors.textSecondary,
+                          ),
                         ),
                         const SizedBox(height: SportifySpacing.md),
                         Row(
                           children: <Widget>[
-                            const Icon(Icons.check_circle, color: SportifyColors.primary, size: 30),
+                            const Icon(
+                              Icons.check_circle,
+                              color: SportifyColors.primary,
+                              size: 30,
+                            ),
                             const SizedBox(width: SportifySpacing.md),
-                            const Icon(Icons.download_for_offline_outlined, size: 30),
+                            const Icon(
+                              Icons.download_for_offline_outlined,
+                              size: 30,
+                            ),
                             const SizedBox(width: SportifySpacing.md),
                             const Icon(Icons.more_horiz, size: 30),
                             const Spacer(),
@@ -249,7 +279,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                       ),
                     ),
                     subtitle: Text(track.artist),
-                    trailing: const Icon(Icons.more_vert),
+                    trailing: IconButton(
+                      onPressed: () => _openTrackOptions(track),
+                      icon: const Icon(Icons.more_vert),
+                    ),
                   );
                 },
               ),

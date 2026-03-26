@@ -43,7 +43,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: SportifySpacing.md),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: SportifySpacing.md,
+                  ),
                   child: Text(
                     'Your Library',
                     style: Theme.of(context).textTheme.headlineMedium,
@@ -77,7 +79,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         onTap: () => setState(() => _tabIndex = 2),
                       ),
                       _TabChip(
-                        label: 'Downloaded',
+                        label: 'Liked Songs',
                         selected: _tabIndex == 3,
                         onTap: () => setState(() => _tabIndex = 3),
                       ),
@@ -88,7 +90,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               if (state.errorMessage != null)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: SportifySpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SportifySpacing.md,
+                    ),
                     child: Text(
                       state.errorMessage!,
                       style: const TextStyle(color: SportifyColors.error),
@@ -109,7 +113,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           title: playlist.title,
                         );
                       },
-                      leading: const CircleAvatar(child: Icon(Icons.queue_music_outlined)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.queue_music_outlined),
+                      ),
                       title: Text(playlist.title),
                       subtitle: Text('${playlist.trackCount} tracks'),
                       trailing: Icon(
@@ -133,9 +139,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           title: album.title,
                         );
                       },
-                      leading: const CircleAvatar(child: Icon(Icons.album_outlined)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.album_outlined),
+                      ),
                       title: Text(album.title),
-                      subtitle: Text('${album.artist} • ${album.trackCount} tracks'),
+                      subtitle: Text(
+                        '${album.artist} • ${album.trackCount} tracks',
+                      ),
                     );
                   },
                 ),
@@ -153,7 +163,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           title: artist.name,
                         );
                       },
-                      leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.person_outline),
+                      ),
                       title: Text(artist.name),
                       subtitle: Text('${artist.albumCount} albums'),
                     );
@@ -168,7 +180,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       onTap: () async {
                         if (item.audioUrl.trim().isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Track has no audio url.')),
+                            const SnackBar(
+                              content: Text('Track has no audio url.'),
+                            ),
                           );
                           return;
                         }
@@ -184,27 +198,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               ),
                             )
                             .toList(growable: false);
-                        final startIndex = queue.indexWhere((it) => it.id == item.id);
+                        final startIndex = queue.indexWhere(
+                          (it) => it.id == item.id,
+                        );
                         if (startIndex == -1) return;
                         final playerVm = context.read<PlayerViewModel>();
-                        await playerVm.playQueue(
-                          queue,
-                          startIndex: startIndex,
-                        );
+                        await playerVm.playQueue(queue, startIndex: startIndex);
                         if (!context.mounted) return;
                         final error = playerVm.state.errorMessage;
                         if (error != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(error)),
-                          );
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(error)));
                         }
                       },
-                      leading: const CircleAvatar(child: Icon(Icons.download_done_outlined)),
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.favorite_outline),
+                      ),
                       title: Text(item.title),
                       subtitle: Text(item.artist),
                       trailing: IconButton(
                         onPressed: () => vm.unsaveTrack(item.id),
-                        icon: const Icon(Icons.favorite, color: SportifyColors.primary),
+                        icon: const Icon(
+                          Icons.favorite,
+                          color: SportifyColors.primary,
+                        ),
                       ),
                     );
                   },
@@ -237,7 +255,9 @@ class _TabChip extends StatelessWidget {
       onSelected: (_) => onTap(),
       selectedColor: SportifyColors.primary.withValues(alpha: 0.25),
       labelStyle: TextStyle(
-        color: selected ? SportifyColors.textPrimary : SportifyColors.textSecondary,
+        color: selected
+            ? SportifyColors.textPrimary
+            : SportifyColors.textSecondary,
         fontWeight: FontWeight.w600,
       ),
       side: const BorderSide(color: SportifyColors.border),
