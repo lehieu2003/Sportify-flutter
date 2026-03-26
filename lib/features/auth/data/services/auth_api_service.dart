@@ -6,6 +6,7 @@ import '../../../../core/config/api_config.dart';
 import '../../../../core/network/json_utils.dart';
 import '../models/auth_session.dart';
 import '../models/auth_user.dart';
+import '../models/user_device_session.dart';
 
 class AuthApiService {
   AuthApiService({required http.Client client}) : _client = client;
@@ -164,6 +165,45 @@ class AuthApiService {
       statusCode: response.statusCode,
       payload: payload,
       fallback: 'Sign out all failed.',
+    );
+  }
+
+  Future<List<UserDeviceSession>> listSessions({required String accessToken}) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/sessions');
+    final response = await _client.get(
+      uri,
+      headers: <String, String>{'Authorization': 'Bearer $accessToken'},
+    );
+    if (response.statusCode != 200) {
+      final payload = decodeJsonObject(response.body);
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Load sessions failed.',
+      );
+    }
+    return decodeJsonObjectList(response.body)
+        .map(UserDeviceSession.fromJson)
+        .toList(growable: false);
+  }
+
+  Future<void> revokeSession({
+    required String accessToken,
+    required String sessionId,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/sessions/$sessionId');
+    final response = await _client.delete(
+      uri,
+      headers: <String, String>{'Authorization': 'Bearer $accessToken'},
+    );
+    if (response.statusCode == 200) {
+      return;
+    }
+    final payload = decodeJsonObject(response.body);
+    throwApiException(
+      statusCode: response.statusCode,
+      payload: payload,
+      fallback: 'Revoke session failed.',
     );
   }
 }
