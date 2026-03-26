@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/sportify_theme.dart';
 import 'features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'features/catalog/presentation/viewmodels/search_view_model.dart';
+import 'features/catalog/data/repositories/catalog_repository.dart';
 import 'features/home/presentation/viewmodels/home_view_model.dart';
 import 'features/library/presentation/viewmodels/library_view_model.dart';
 import 'features/player/presentation/viewmodels/player_view_model.dart';
@@ -19,6 +20,7 @@ class SportifyApp extends StatelessWidget {
     required this.libraryViewModel,
     required this.playerViewModel,
     required this.playlistRepository,
+    required this.catalogRepository,
   });
 
   final HomeViewModel homeViewModel;
@@ -27,6 +29,7 @@ class SportifyApp extends StatelessWidget {
   final LibraryViewModel libraryViewModel;
   final PlayerViewModel playerViewModel;
   final PlaylistRepository playlistRepository;
+  final CatalogRepository catalogRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +41,7 @@ class SportifyApp extends StatelessWidget {
         ChangeNotifierProvider<LibraryViewModel>.value(value: libraryViewModel),
         ChangeNotifierProvider<PlayerViewModel>.value(value: playerViewModel),
         Provider<PlaylistRepository>.value(value: playlistRepository),
+        Provider<CatalogRepository>.value(value: catalogRepository),
       ],
       child: MaterialApp(
         title: 'Sportify Mobile',

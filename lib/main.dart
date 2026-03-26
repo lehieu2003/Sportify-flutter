@@ -90,6 +90,7 @@ Future<void> main() async {
       libraryViewModel: libraryViewModel,
       playerViewModel: playerViewModel,
       playlistRepository: playlistRepository,
+      catalogRepository: catalogRepository,
     ),
   );
 }

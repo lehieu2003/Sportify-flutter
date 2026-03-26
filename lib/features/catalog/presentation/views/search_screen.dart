@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../data/models/catalog_models.dart';
+import 'album_detail_screen.dart';
 import '../viewmodels/search_view_model.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -14,6 +16,37 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final _controller = TextEditingController();
+
+  Future<void> _playFromSearch(CatalogTrack track, List<CatalogTrack> items) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (track.audioUrl.trim().isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Track has no audio url.')),
+      );
+      return;
+    }
+    final queue = items
+        .where((item) => item.audioUrl.trim().isNotEmpty)
+        .map(
+          (item) => PlayerTrack(
+            id: item.id,
+            title: item.title,
+            artist: item.artist,
+            audioUrl: item.audioUrl,
+            coverUrl: item.coverUrl,
+          ),
+        )
+        .toList(growable: false);
+    final startIndex = queue.indexWhere((item) => item.id == track.id);
+    if (startIndex == -1) return;
+    final playerVm = context.read<PlayerViewModel>();
+    await playerVm.playQueue(queue, startIndex: startIndex);
+    if (!context.mounted) return;
+    final error = playerVm.state.errorMessage;
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
 
   @override
   void dispose() {
@@ -72,44 +105,32 @@ class _SearchScreenState extends State<SearchScreen> {
 
                   final track = state.items[index];
                   return ListTile(
-                    onTap: () async {
-                      if (track.audioUrl.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Track has no audio url.')),
-                        );
+                    onTap: () {
+                      final albumId = track.albumId;
+                      if (albumId == null || albumId.isEmpty) {
+                        _playFromSearch(track, state.items);
                         return;
                       }
-                      final queue = state.items
-                          .where((item) => item.audioUrl.trim().isNotEmpty)
-                          .map(
-                            (item) => PlayerTrack(
-                              id: item.id,
-                              title: item.title,
-                              artist: item.artist,
-                              audioUrl: item.audioUrl,
-                              coverUrl: item.coverUrl,
-                            ),
-                          )
-                          .toList(growable: false);
-                      final startIndex = queue.indexWhere((item) => item.id == track.id);
-                      if (startIndex == -1) return;
-                      final playerVm = context.read<PlayerViewModel>();
-                      await playerVm.playQueue(
-                        queue,
-                        startIndex: startIndex,
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AlbumDetailScreen(
+                            albumId: albumId,
+                            initialTitle: track.albumTitle,
+                          ),
+                        ),
                       );
-                      if (!context.mounted) return;
-                      final error = playerVm.state.errorMessage;
-                      if (error != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(error)),
-                        );
-                      }
                     },
                     leading: const CircleAvatar(child: Icon(Icons.music_note)),
                     title: Text(track.title),
-                    subtitle: Text(track.artist),
-                    trailing: const Icon(Icons.play_arrow),
+                    subtitle: Text(
+                      track.albumTitle?.trim().isNotEmpty == true
+                          ? '${track.artist} • ${track.albumTitle}'
+                          : track.artist,
+                    ),
+                    trailing: IconButton(
+                      onPressed: () => _playFromSearch(track, state.items),
+                      icon: const Icon(Icons.play_arrow),
+                    ),
                   );
                 },
               ),

@@ -14,6 +14,61 @@ class NowPlayingScreen extends StatefulWidget {
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
   double? _dragValueMs;
 
+  Future<void> _openQueueSheet(PlayerViewModel vm) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: Consumer<PlayerViewModel>(
+            builder: (context, queueVm, _) {
+              final state = queueVm.state;
+              return SizedBox(
+                height: MediaQuery.of(context).size.height * 0.7,
+                child: Column(
+                  children: <Widget>[
+                    const SizedBox(height: SportifySpacing.md),
+                    const Text(
+                      'Up Next',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: SportifySpacing.sm),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: state.queue.length,
+                        itemBuilder: (context, index) {
+                          final item = state.queue[index];
+                          final isCurrent = index == state.queueIndex;
+                          return ListTile(
+                            onTap: () => queueVm.jumpToQueueIndex(index),
+                            leading: Icon(
+                              isCurrent ? Icons.graphic_eq : Icons.music_note,
+                              color: isCurrent
+                                  ? SportifyColors.primary
+                                  : SportifyColors.textSecondary,
+                            ),
+                            title: Text(item.title),
+                            subtitle: Text(item.artist),
+                            trailing: IconButton(
+                              onPressed: state.queue.length <= 1
+                                  ? null
+                                  : () => queueVm.removeFromQueueAt(index),
+                              icon: const Icon(Icons.remove_circle_outline),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<PlayerViewModel>(
@@ -47,7 +102,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             : SportifyColors.primary;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Now Playing')),
+          appBar: AppBar(
+            title: const Text('Now Playing'),
+            actions: <Widget>[
+              IconButton(
+                onPressed: () => _openQueueSheet(vm),
+                icon: const Icon(Icons.queue_music),
+              ),
+            ],
+          ),
           body: Padding(
             padding: const EdgeInsets.all(SportifySpacing.md),
             child: Column(

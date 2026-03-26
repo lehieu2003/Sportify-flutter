@@ -391,6 +391,101 @@ class PlayerViewModel extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> jumpToQueueIndex(int index, {bool autoPlay = true}) async {
+    if (_state.queue.isEmpty) return;
+    final safeIndex = index.clamp(0, _state.queue.length - 1);
+    final track = _state.queue[safeIndex];
+    try {
+      await _audioPlayer.seek(Duration.zero, index: safeIndex);
+      if (autoPlay) {
+        await _audioPlayer.play();
+      } else {
+        await _audioPlayer.pause();
+      }
+      _state = _state.copyWith(
+        queueIndex: safeIndex,
+        currentTrack: track,
+        position: Duration.zero,
+        isPlaying: autoPlay,
+        errorMessage: null,
+      );
+      notifyListeners();
+      await _playbackRepository.updateState(
+        currentTrackId: track.id,
+        queueIndex: safeIndex,
+        isPlaying: autoPlay,
+        positionMs: 0,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
+      );
+    } catch (error) {
+      debugPrint('jumpToQueueIndex failed: $error');
+      _state = _state.copyWith(errorMessage: 'Failed to change queue item.');
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeFromQueueAt(int index) async {
+    final queue = _state.queue;
+    if (queue.length <= 1) {
+      _state = _state.copyWith(errorMessage: 'Cannot remove the last track in queue.');
+      notifyListeners();
+      return;
+    }
+    if (index < 0 || index >= queue.length) return;
+
+    final updatedQueue = List<PlayerTrack>.from(queue)..removeAt(index);
+    final wasPlaying = _state.isPlaying;
+    var nextIndex = _state.queueIndex;
+    if (index < nextIndex) {
+      nextIndex -= 1;
+    } else if (index == nextIndex) {
+      nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
+    }
+    nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
+
+    try {
+      final sources = updatedQueue
+          .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+          .toList(growable: false);
+      await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
+      await _audioPlayer.seek(Duration.zero, index: nextIndex);
+      if (wasPlaying) {
+        await _audioPlayer.play();
+      } else {
+        await _audioPlayer.pause();
+      }
+
+      final currentTrack = updatedQueue[nextIndex];
+      _state = _state.copyWith(
+        queue: updatedQueue,
+        queueIndex: nextIndex,
+        currentTrack: currentTrack,
+        position: Duration.zero,
+        isPlaying: wasPlaying,
+        errorMessage: null,
+      );
+      notifyListeners();
+
+      await _playbackRepository.setQueue(
+        trackIds: updatedQueue.map((item) => item.id).toList(growable: false),
+        currentIndex: nextIndex,
+      );
+      await _playbackRepository.updateState(
+        currentTrackId: currentTrack.id,
+        queueIndex: nextIndex,
+        isPlaying: wasPlaying,
+        positionMs: 0,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
+      );
+    } catch (error) {
+      debugPrint('removeFromQueueAt failed: $error');
+      _state = _state.copyWith(errorMessage: 'Failed to remove track from queue.');
+      notifyListeners();
+    }
+  }
+
   Future<void> toggleShuffle() async {
     final next = !_state.shuffleEnabled;
     _state = _state.copyWith(shuffleEnabled: next, errorMessage: null);
