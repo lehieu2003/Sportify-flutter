@@ -13,12 +13,16 @@ class PlaybackRepository {
     int? queueIndex,
     bool? isPlaying,
     int? positionMs,
+    bool? shuffleEnabled,
+    String? repeatMode,
   }) {
     return _service.updateState(
       currentTrackId: currentTrackId,
       queueIndex: queueIndex,
       isPlaying: isPlaying,
       positionMs: positionMs,
+      shuffleEnabled: shuffleEnabled,
+      repeatMode: repeatMode,
     );
   }
 

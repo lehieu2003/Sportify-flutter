@@ -28,6 +28,8 @@ class PlaybackApiService {
     int? queueIndex,
     bool? isPlaying,
     int? positionMs,
+    bool? shuffleEnabled,
+    String? repeatMode,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/playback/state');
     final response = await _client.patch(
@@ -38,6 +40,8 @@ class PlaybackApiService {
         if (queueIndex != null) 'queueIndex': queueIndex,
         if (isPlaying != null) 'isPlaying': isPlaying,
         if (positionMs != null) 'positionMs': positionMs,
+        if (shuffleEnabled != null) 'shuffleEnabled': shuffleEnabled,
+        if (repeatMode != null) 'repeatMode': repeatMode,
       }),
     );
     final payload = decodeJsonObject(response.body);

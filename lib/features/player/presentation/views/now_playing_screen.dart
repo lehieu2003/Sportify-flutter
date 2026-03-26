@@ -4,8 +4,15 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/sportify_theme.dart';
 import '../viewmodels/player_view_model.dart';
 
-class NowPlayingScreen extends StatelessWidget {
+class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({super.key});
+
+  @override
+  State<NowPlayingScreen> createState() => _NowPlayingScreenState();
+}
+
+class _NowPlayingScreenState extends State<NowPlayingScreen> {
+  double? _dragValueMs;
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +27,24 @@ class NowPlayingScreen extends StatelessWidget {
         }
 
         final durationMs = state.duration.inMilliseconds;
-        final positionMs = state.position.inMilliseconds.clamp(
+        final streamPositionMs = state.position.inMilliseconds.clamp(
           0,
           durationMs > 0 ? durationMs : 1,
         );
+        final positionMs = (_dragValueMs ?? streamPositionMs.toDouble()).clamp(
+          0,
+          (durationMs > 0 ? durationMs : 1).toDouble(),
+        ).toDouble();
+        final isShuffleActive = state.shuffleEnabled;
+        final repeatMode = state.repeatMode;
+        final repeatIcon = switch (repeatMode) {
+          'all' => Icons.repeat,
+          'one' => Icons.repeat_one,
+          _ => Icons.repeat,
+        };
+        final repeatColor = repeatMode == 'off'
+            ? SportifyColors.textSecondary
+            : SportifyColors.primary;
 
         return Scaffold(
           appBar: AppBar(title: const Text('Now Playing')),
@@ -53,9 +74,13 @@ class NowPlayingScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: SportifySpacing.md),
                 Slider(
-                  value: positionMs.toDouble(),
+                  value: positionMs,
                   max: (durationMs > 0 ? durationMs : 1).toDouble(),
-                  onChanged: (value) => vm.seek(Duration(milliseconds: value.toInt())),
+                  onChanged: (value) => setState(() => _dragValueMs = value),
+                  onChangeEnd: (value) async {
+                    setState(() => _dragValueMs = null);
+                    await vm.seek(Duration(milliseconds: value.toInt()));
+                  },
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -68,6 +93,14 @@ class NowPlayingScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
+                    IconButton(
+                      onPressed: vm.toggleShuffle,
+                      iconSize: 28,
+                      color: isShuffleActive
+                          ? SportifyColors.primary
+                          : SportifyColors.textSecondary,
+                      icon: const Icon(Icons.shuffle),
+                    ),
                     IconButton(
                       onPressed: vm.previousTrack,
                       iconSize: 36,
@@ -86,6 +119,12 @@ class NowPlayingScreen extends StatelessWidget {
                       onPressed: vm.nextTrack,
                       iconSize: 36,
                       icon: const Icon(Icons.skip_next),
+                    ),
+                    IconButton(
+                      onPressed: vm.cycleRepeatMode,
+                      iconSize: 28,
+                      color: repeatColor,
+                      icon: Icon(repeatIcon),
                     ),
                   ],
                 ),

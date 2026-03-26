@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -32,6 +33,8 @@ class PlayerUiState {
     required this.isBuffering,
     required this.position,
     required this.duration,
+    required this.shuffleEnabled,
+    required this.repeatMode,
     this.errorMessage,
   });
 
@@ -43,6 +46,8 @@ class PlayerUiState {
       isBuffering = false,
       position = Duration.zero,
       duration = Duration.zero,
+      shuffleEnabled = false,
+      repeatMode = 'off',
       errorMessage = null;
 
   final List<PlayerTrack> queue;
@@ -52,6 +57,8 @@ class PlayerUiState {
   final bool isBuffering;
   final Duration position;
   final Duration duration;
+  final bool shuffleEnabled;
+  final String repeatMode;
   final String? errorMessage;
 
   PlayerUiState copyWith({
@@ -62,6 +69,8 @@ class PlayerUiState {
     bool? isBuffering,
     Duration? position,
     Duration? duration,
+    bool? shuffleEnabled,
+    String? repeatMode,
     String? errorMessage,
     bool clearTrack = false,
   }) {
@@ -73,6 +82,8 @@ class PlayerUiState {
       isBuffering: isBuffering ?? this.isBuffering,
       position: position ?? this.position,
       duration: duration ?? this.duration,
+      shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
+      repeatMode: repeatMode ?? this.repeatMode,
       errorMessage: errorMessage,
     );
   }
@@ -103,9 +114,7 @@ class PlayerViewModel extends ChangeNotifier {
           !_completedSent) {
         _completedSent = true;
         await _sendComplete();
-        if (_state.queueIndex < _state.queue.length - 1) {
-          await nextTrack(autoPlay: true);
-        }
+        await nextTrack(autoPlay: true);
       }
     });
     _durationSub = _audioPlayer.durationStream.listen((duration) {
@@ -124,6 +133,8 @@ class PlayerViewModel extends ChangeNotifier {
   PlayerUiState _state = const PlayerUiState.initial();
   bool _completedSent = false;
   bool _isRestoring = false;
+  Timer? _seekSyncDebounce;
+  final Random _random = Random();
 
   PlayerUiState get state => _state;
 
@@ -164,6 +175,8 @@ class PlayerViewModel extends ChangeNotifier {
       final queueIndex = _toInt(statePayload['queueIndex'] ?? queuePayload['currentIndex']) ?? 0;
       final safeIndex = queueIndex.clamp(0, queue.length - 1);
       final positionMs = _toInt(statePayload['positionMs']) ?? 0;
+      final shuffleEnabled = statePayload['shuffleEnabled'] == true;
+      final repeatMode = _parseRepeatMode(statePayload['repeatMode']);
 
       final sources = queue
           .map((track) => AudioSource.uri(Uri.parse(track.audioUrl)))
@@ -180,6 +193,8 @@ class PlayerViewModel extends ChangeNotifier {
         isPlaying: false,
         isBuffering: false,
         position: Duration(milliseconds: positionMs),
+        shuffleEnabled: shuffleEnabled,
+        repeatMode: repeatMode,
         errorMessage: null,
       );
       notifyListeners();
@@ -231,6 +246,8 @@ class PlayerViewModel extends ChangeNotifier {
         queueIndex: safeIndex,
         isPlaying: true,
         positionMs: 0,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
       );
       await _safeSendPlay();
     } catch (error) {
@@ -248,6 +265,8 @@ class PlayerViewModel extends ChangeNotifier {
         await _playbackRepository.updateState(
           isPlaying: false,
           positionMs: _audioPlayer.position.inMilliseconds,
+          shuffleEnabled: _state.shuffleEnabled,
+          repeatMode: _state.repeatMode,
         );
         await _safeSendPause();
       } else {
@@ -255,6 +274,8 @@ class PlayerViewModel extends ChangeNotifier {
         await _playbackRepository.updateState(
           isPlaying: true,
           positionMs: _audioPlayer.position.inMilliseconds,
+          shuffleEnabled: _state.shuffleEnabled,
+          repeatMode: _state.repeatMode,
         );
         await _safeSendPlay();
       }
@@ -284,6 +305,8 @@ class PlayerViewModel extends ChangeNotifier {
         queueIndex: 0,
         isPlaying: false,
         positionMs: 0,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
       );
     } catch (_) {}
   }
@@ -298,13 +321,13 @@ class PlayerViewModel extends ChangeNotifier {
 
   Future<void> seek(Duration position) async {
     await _audioPlayer.seek(position);
-    await _playbackRepository.updateState(positionMs: position.inMilliseconds);
+    _scheduleSeekSync(position.inMilliseconds);
   }
 
   Future<void> nextTrack({bool autoPlay = true}) async {
     if (_state.queue.isEmpty) return;
-    final targetIndex = (_state.queueIndex + 1).clamp(0, _state.queue.length - 1);
-    if (targetIndex == _state.queueIndex) return;
+    final targetIndex = _resolveNextIndex();
+    if (targetIndex == _state.queueIndex && _state.repeatMode != 'one') return;
     final track = _state.queue[targetIndex];
     try {
       await _audioPlayer.seek(Duration.zero, index: targetIndex);
@@ -324,6 +347,8 @@ class PlayerViewModel extends ChangeNotifier {
         queueIndex: targetIndex,
         isPlaying: autoPlay,
         positionMs: 0,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
       );
       if (autoPlay) {
         await _listeningRepository.skip(track.id, progressMs: 0);
@@ -333,8 +358,8 @@ class PlayerViewModel extends ChangeNotifier {
 
   Future<void> previousTrack({bool autoPlay = true}) async {
     if (_state.queue.isEmpty) return;
-    final targetIndex = (_state.queueIndex - 1).clamp(0, _state.queue.length - 1);
-    if (targetIndex == _state.queueIndex) {
+    final targetIndex = _resolvePreviousIndex();
+    if (targetIndex == _state.queueIndex && _state.repeatMode != 'one') {
       await seek(Duration.zero);
       return;
     }
@@ -357,10 +382,40 @@ class PlayerViewModel extends ChangeNotifier {
         queueIndex: targetIndex,
         isPlaying: autoPlay,
         positionMs: 0,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
       );
       if (autoPlay) {
         await _listeningRepository.skip(track.id, progressMs: 0);
       }
+    } catch (_) {}
+  }
+
+  Future<void> toggleShuffle() async {
+    final next = !_state.shuffleEnabled;
+    _state = _state.copyWith(shuffleEnabled: next, errorMessage: null);
+    notifyListeners();
+    try {
+      await _playbackRepository.updateState(
+        shuffleEnabled: next,
+        repeatMode: _state.repeatMode,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> cycleRepeatMode() async {
+    final next = switch (_state.repeatMode) {
+      'off' => 'all',
+      'all' => 'one',
+      _ => 'off',
+    };
+    _state = _state.copyWith(repeatMode: next, errorMessage: null);
+    notifyListeners();
+    try {
+      await _playbackRepository.updateState(
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: next,
+      );
     } catch (_) {}
   }
 
@@ -403,8 +458,57 @@ class PlayerViewModel extends ChangeNotifier {
     return null;
   }
 
+  String _parseRepeatMode(dynamic value) {
+    if (value is String && (value == 'off' || value == 'all' || value == 'one')) {
+      return value;
+    }
+    return 'off';
+  }
+
+  void _scheduleSeekSync(int positionMs) {
+    _seekSyncDebounce?.cancel();
+    _seekSyncDebounce = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        await _playbackRepository.updateState(
+          positionMs: positionMs,
+          shuffleEnabled: _state.shuffleEnabled,
+          repeatMode: _state.repeatMode,
+        );
+      } catch (_) {}
+    });
+  }
+
+  int _resolveNextIndex() {
+    final length = _state.queue.length;
+    if (length <= 1) return 0;
+    final current = _state.queueIndex;
+    if (_state.repeatMode == 'one') return current;
+    if (_state.shuffleEnabled) {
+      final randomIndex = _random.nextInt(length);
+      return randomIndex == current ? (current + 1) % length : randomIndex;
+    }
+    final candidate = current + 1;
+    if (candidate < length) return candidate;
+    return _state.repeatMode == 'all' ? 0 : current;
+  }
+
+  int _resolvePreviousIndex() {
+    final length = _state.queue.length;
+    if (length <= 1) return 0;
+    final current = _state.queueIndex;
+    if (_state.repeatMode == 'one') return current;
+    if (_state.shuffleEnabled) {
+      final randomIndex = _random.nextInt(length);
+      return randomIndex == current ? (current - 1 + length) % length : randomIndex;
+    }
+    final candidate = current - 1;
+    if (candidate >= 0) return candidate;
+    return _state.repeatMode == 'all' ? length - 1 : current;
+  }
+
   @override
   void dispose() {
+    _seekSyncDebounce?.cancel();
     _positionSub.cancel();
     _playerStateSub.cancel();
     _durationSub.cancel();
