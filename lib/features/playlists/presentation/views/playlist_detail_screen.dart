@@ -5,6 +5,7 @@ import '../../../../core/theme/sportify_theme.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../catalog/data/models/catalog_models.dart';
 import '../../../catalog/data/repositories/catalog_repository.dart';
+import '../../../library/presentation/viewmodels/library_view_model.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
 import '../../../player/presentation/widgets/track_options_sheet.dart';
 import '../../data/models/playlist_models.dart';
@@ -33,6 +34,8 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   List<PlaylistTrack> _tracks = const <PlaylistTrack>[];
   List<CatalogTrack> _recommended = const <CatalogTrack>[];
   final Set<String> _addingTrackIds = <String>{};
+  bool _isMutatingTracks = false;
+  bool _isSavingPlaylistMeta = false;
 
   @override
   void initState() {
@@ -78,6 +81,12 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         _playlist = results[0] as PlaylistDetail;
         _tracks = results[1] as List<PlaylistTrack>;
       });
+    } catch (_) {}
+  }
+
+  Future<void> _refreshLibrary() async {
+    try {
+      await context.read<LibraryViewModel>().loadSavedTracks();
     } catch (_) {}
   }
 
@@ -135,6 +144,24 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     }
   }
 
+  List<PlaylistTrack> _withPositions(List<PlaylistTrack> tracks) {
+    return tracks
+        .asMap()
+        .entries
+        .map(
+          (entry) => PlaylistTrack(
+            trackId: entry.value.trackId,
+            position: entry.key + 1,
+            title: entry.value.title,
+            artist: entry.value.artist,
+            coverUrl: entry.value.coverUrl,
+            audioUrl: entry.value.audioUrl,
+            durationMs: entry.value.durationMs,
+          ),
+        )
+        .toList(growable: false);
+  }
+
   Future<void> _playTrack(int index) async {
     final track = _tracks[index];
     if (track.audioUrl.trim().isEmpty) {
@@ -183,8 +210,23 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
   Future<void> _addRecommendedTrack(CatalogTrack track) async {
     if (_addingTrackIds.contains(track.id)) return;
+    final previousTracks = List<PlaylistTrack>.from(_tracks);
+    final previousRecommended = List<CatalogTrack>.from(_recommended);
+    final optimisticTrack = PlaylistTrack(
+      trackId: track.id,
+      position: _tracks.length + 1,
+      title: track.title,
+      artist: track.artist,
+      coverUrl: track.coverUrl,
+      audioUrl: track.audioUrl,
+      durationMs: 0,
+    );
     setState(() {
       _addingTrackIds.add(track.id);
+      _tracks = _withPositions(<PlaylistTrack>[..._tracks, optimisticTrack]);
+      _recommended = _recommended
+          .where((item) => item.id != track.id)
+          .toList(growable: false);
     });
     try {
       await context.read<PlaylistRepository>().addTrackToPlaylist(
@@ -192,17 +234,17 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         trackId: track.id,
       );
       await _reloadTracks();
+      await _refreshLibrary();
       if (!mounted) return;
-      setState(() {
-        _recommended = _recommended
-            .where((item) => item.id != track.id)
-            .toList(growable: false);
-      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Added to playlist.')));
     } catch (error) {
       if (!mounted) return;
+      setState(() {
+        _tracks = previousTracks;
+        _recommended = previousRecommended;
+      });
       final message = error.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -218,6 +260,155 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     }
   }
 
+  Future<void> _removeTrack(PlaylistTrack track) async {
+    if (_isMutatingTracks) return;
+    final previous = List<PlaylistTrack>.from(_tracks);
+    setState(() {
+      _isMutatingTracks = true;
+      _tracks = _withPositions(
+        _tracks.where((item) => item.trackId != track.trackId).toList(),
+      );
+    });
+    try {
+      await context.read<PlaylistRepository>().removeTrack(
+        playlistId: widget.playlistId,
+        trackId: track.trackId,
+      );
+      await _reloadTracks();
+      await _refreshLibrary();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Removed from playlist.')));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _tracks = previous;
+      });
+      final message = error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message.isEmpty ? 'Failed to remove track.' : message),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingTracks = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _reorderTracks(int oldIndex, int newIndex) async {
+    if (_isMutatingTracks || oldIndex == newIndex) return;
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    if (oldIndex == newIndex) return;
+    final previous = List<PlaylistTrack>.from(_tracks);
+    final updated = List<PlaylistTrack>.from(_tracks);
+    final moved = updated.removeAt(oldIndex);
+    updated.insert(newIndex, moved);
+
+    setState(() {
+      _isMutatingTracks = true;
+      _tracks = _withPositions(updated);
+    });
+
+    try {
+      await context.read<PlaylistRepository>().reorderTrack(
+        playlistId: widget.playlistId,
+        trackId: moved.trackId,
+        newPosition: newIndex + 1,
+      );
+      await _reloadTracks();
+      await _refreshLibrary();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _tracks = previous;
+      });
+      final message = error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty ? 'Failed to reorder tracks.' : message,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingTracks = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openEditDialog() async {
+    final current = _playlist;
+    if (current == null || _isSavingPlaylistMeta) return;
+    final repository = context.read<PlaylistRepository>();
+    final result = await showDialog<_EditPlaylistPayload>(
+      context: context,
+      builder: (_) => _EditPlaylistDialog(
+        initialTitle: current.title,
+        initialDescription: current.description,
+        initialIsPublic: current.isPublic,
+      ),
+    );
+    if (result == null) return;
+    final previous = current;
+    setState(() {
+      _isSavingPlaylistMeta = true;
+      _playlist = PlaylistDetail(
+        id: current.id,
+        title: result.title,
+        description: result.description,
+        coverUrl: current.coverUrl,
+        isPublic: result.isPublic,
+        trackCount: current.trackCount,
+      );
+    });
+    try {
+      final updated = await repository.updatePlaylist(
+        playlistId: widget.playlistId,
+        title: result.title,
+        description: result.description,
+        isPublic: result.isPublic,
+      );
+      if (!mounted) return;
+      setState(() {
+        _playlist = PlaylistDetail.fromJson(updated);
+      });
+      await _refreshLibrary();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Playlist updated.')));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _playlist = previous;
+      });
+      final message = error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message.isEmpty ? 'Failed to update playlist.' : message,
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingPlaylistMeta = false;
+        });
+      }
+    }
+  }
+
   Future<void> _openAddToPlaylistPicker() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -226,10 +417,8 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _TrackSearchPickerSheet(
-        playlistId: widget.playlistId,
-        onTrackAdded: _reloadTracks,
-      ),
+      builder: (_) =>
+          _TrackSearchPickerSheet(onTrackAdded: _addRecommendedTrack),
     );
     if (!mounted) return;
     await _loadRecommended(reset: true, query: _playlist?.title);
@@ -272,6 +461,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       background: _PlaylistHeader(
                         title: title,
                         ownerName: ownerName,
+                        isPublic: _playlist?.isPublic ?? false,
+                        isSaving: _isSavingPlaylistMeta,
+                        onEdit: _openEditDialog,
                       ),
                     ),
                   ),
@@ -314,37 +506,75 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       ),
                     ),
                   if (_tracks.isNotEmpty)
-                    SliverList.builder(
+                    SliverReorderableList(
                       itemCount: _tracks.length,
+                      onReorder: _reorderTracks,
                       itemBuilder: (context, index) {
                         final track = _tracks[index];
-                        return ListTile(
-                          onTap: () => _playTrack(index),
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: SizedBox(
-                              width: 46,
-                              height: 46,
-                              child: track.coverUrl.trim().isEmpty
-                                  ? Container(
-                                      color: SportifyColors.card,
-                                      child: const Icon(Icons.music_note),
-                                    )
-                                  : Image.network(
-                                      track.coverUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Container(
+                        return Container(
+                          key: ValueKey<String>(
+                            'playlist-track-${track.trackId}',
+                          ),
+                          color: SportifyColors.background,
+                          child: ListTile(
+                            onTap: () => _playTrack(index),
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: SizedBox(
+                                width: 46,
+                                height: 46,
+                                child: track.coverUrl.trim().isEmpty
+                                    ? Container(
                                         color: SportifyColors.card,
                                         child: const Icon(Icons.music_note),
+                                      )
+                                    : Image.network(
+                                        track.coverUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Container(
+                                          color: SportifyColors.card,
+                                          child: const Icon(Icons.music_note),
+                                        ),
                                       ),
-                                    ),
+                              ),
                             ),
-                          ),
-                          title: Text(track.title),
-                          subtitle: Text(track.artist),
-                          trailing: IconButton(
-                            onPressed: () => _openTrackOptions(track),
-                            icon: const Icon(Icons.more_vert),
+                            title: Text(track.title),
+                            subtitle: Text(track.artist),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                PopupMenuButton<String>(
+                                  onSelected: (value) async {
+                                    if (value == 'remove') {
+                                      await _removeTrack(track);
+                                      return;
+                                    }
+                                    await _openTrackOptions(track);
+                                  },
+                                  itemBuilder: (_) =>
+                                      const <PopupMenuEntry<String>>[
+                                        PopupMenuItem<String>(
+                                          value: 'options',
+                                          child: Text('Open track options'),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'remove',
+                                          child: Text(
+                                            'Remove from this playlist',
+                                          ),
+                                        ),
+                                      ],
+                                ),
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  enabled: !_isMutatingTracks,
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(left: 4),
+                                    child: Icon(Icons.drag_handle),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -458,10 +688,19 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 }
 
 class _PlaylistHeader extends StatelessWidget {
-  const _PlaylistHeader({required this.title, required this.ownerName});
+  const _PlaylistHeader({
+    required this.title,
+    required this.ownerName,
+    required this.isPublic,
+    required this.isSaving,
+    required this.onEdit,
+  });
 
   final String title;
   final String ownerName;
+  final bool isPublic;
+  final bool isSaving;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -555,13 +794,25 @@ class _PlaylistHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                FilledButton.tonal(onPressed: () {}, child: const Text('Edit')),
+                FilledButton.tonal(
+                  onPressed: isSaving ? null : onEdit,
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Edit'),
+                ),
               ],
             ),
             const SizedBox(height: SportifySpacing.md),
-            const Row(
+            Row(
               children: <Widget>[
-                Icon(Icons.public, color: SportifyColors.textSecondary),
+                Icon(
+                  isPublic ? Icons.public : Icons.lock_outline,
+                  color: SportifyColors.textSecondary,
+                ),
                 SizedBox(width: SportifySpacing.md),
                 Icon(
                   Icons.person_add_alt_1,
@@ -578,14 +829,114 @@ class _PlaylistHeader extends StatelessWidget {
   }
 }
 
-class _TrackSearchPickerSheet extends StatefulWidget {
-  const _TrackSearchPickerSheet({
-    required this.playlistId,
-    required this.onTrackAdded,
+class _EditPlaylistPayload {
+  const _EditPlaylistPayload({
+    required this.title,
+    required this.description,
+    required this.isPublic,
   });
 
-  final String playlistId;
-  final Future<void> Function() onTrackAdded;
+  final String title;
+  final String description;
+  final bool isPublic;
+}
+
+class _EditPlaylistDialog extends StatefulWidget {
+  const _EditPlaylistDialog({
+    required this.initialTitle,
+    required this.initialDescription,
+    required this.initialIsPublic,
+  });
+
+  final String initialTitle;
+  final String initialDescription;
+  final bool initialIsPublic;
+
+  @override
+  State<_EditPlaylistDialog> createState() => _EditPlaylistDialogState();
+}
+
+class _EditPlaylistDialogState extends State<_EditPlaylistDialog> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late bool _isPublic;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.initialTitle);
+    _descriptionController = TextEditingController(
+      text: widget.initialDescription,
+    );
+    _isPublic = widget.initialIsPublic;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _titleController.text.trim();
+    final isValid = title.isNotEmpty && title.length <= 80;
+    return AlertDialog(
+      backgroundColor: SportifyColors.surface,
+      title: const Text('Edit playlist'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          TextField(
+            controller: _titleController,
+            maxLength: 80,
+            decoration: const InputDecoration(labelText: 'Title'),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: SportifySpacing.sm),
+          TextField(
+            controller: _descriptionController,
+            maxLines: 2,
+            decoration: const InputDecoration(labelText: 'Description'),
+          ),
+          const SizedBox(height: SportifySpacing.sm),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Public playlist'),
+            value: _isPublic,
+            onChanged: (value) => setState(() => _isPublic = value),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: !isValid
+              ? null
+              : () {
+                  Navigator.of(context).pop(
+                    _EditPlaylistPayload(
+                      title: title,
+                      description: _descriptionController.text.trim(),
+                      isPublic: _isPublic,
+                    ),
+                  );
+                },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrackSearchPickerSheet extends StatefulWidget {
+  const _TrackSearchPickerSheet({required this.onTrackAdded});
+
+  final Future<void> Function(CatalogTrack track) onTrackAdded;
 
   @override
   State<_TrackSearchPickerSheet> createState() =>
@@ -660,11 +1011,7 @@ class _TrackSearchPickerSheetState extends State<_TrackSearchPickerSheet> {
       _addingTrackIds.add(track.id);
     });
     try {
-      await context.read<PlaylistRepository>().addTrackToPlaylist(
-        playlistId: widget.playlistId,
-        trackId: track.id,
-      );
-      await widget.onTrackAdded();
+      await widget.onTrackAdded(track);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,

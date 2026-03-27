@@ -6,7 +6,7 @@ import '../../../../core/theme/sportify_theme.dart';
 import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../library/data/repositories/library_repository.dart';
 import '../../../library/presentation/viewmodels/library_view_model.dart';
-import '../../../playlists/data/repositories/playlist_repository.dart';
+import '../../../playlists/presentation/widgets/add_to_playlist_picker_sheet.dart';
 import '../viewmodels/player_view_model.dart';
 
 class TrackOptionsData {
@@ -25,13 +25,6 @@ class TrackOptionsData {
   final String audioUrl;
   final String coverUrl;
   final String? artistId;
-}
-
-class _PlaylistOption {
-  const _PlaylistOption({required this.id, required this.title});
-
-  final String id;
-  final String title;
 }
 
 Future<void> showTrackOptionsSheet(
@@ -111,7 +104,10 @@ Future<void> showTrackOptionsSheet(
                       label: 'Add to playlist',
                       onTap: () async {
                         Navigator.of(sheetContext).pop();
-                        await _showPlaylistPickerSheet(context, track);
+                        await showAddToPlaylistPickerSheet(
+                          context,
+                          trackId: track.trackId,
+                        );
                       },
                     ),
                     _ActionTile(
@@ -238,145 +234,6 @@ Future<void> _addToQueue(BuildContext context, TrackOptionsData track) async {
     if (!context.mounted) return;
     _showInfo(context, 'Failed to add track to queue.');
   }
-}
-
-Future<void> _showPlaylistPickerSheet(
-  BuildContext context,
-  TrackOptionsData track,
-) async {
-  final playlistRepository = context.read<PlaylistRepository>();
-  await showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: const Color(0xFF1E1E1E),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (sheetContext) {
-      return SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            SportifySpacing.md,
-            SportifySpacing.sm,
-            SportifySpacing.md,
-            SportifySpacing.md,
-          ),
-          child: FutureBuilder<List<_PlaylistOption>>(
-            future: _loadPlaylistOptions(playlistRepository),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 260,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (snapshot.hasError) {
-                return const SizedBox(
-                  height: 260,
-                  child: Center(
-                    child: Text(
-                      'Failed to load playlists.',
-                      style: TextStyle(color: SportifyColors.error),
-                    ),
-                  ),
-                );
-              }
-
-              final playlists = snapshot.data ?? const <_PlaylistOption>[];
-              if (playlists.isEmpty) {
-                return const SizedBox(
-                  height: 260,
-                  child: Center(
-                    child: Text(
-                      'No playlists found.',
-                      style: TextStyle(color: SportifyColors.textSecondary),
-                    ),
-                  ),
-                );
-              }
-
-              return ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 420),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Text(
-                      'Add to playlist',
-                      style: TextStyle(
-                        color: SportifyColors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: SportifySpacing.sm),
-                    Expanded(
-                      child: ListView.separated(
-                        itemCount: playlists.length,
-                        separatorBuilder: (_, _) => const Divider(
-                          color: SportifyColors.border,
-                          height: 1,
-                        ),
-                        itemBuilder: (context, index) {
-                          final playlist = playlists[index];
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const CircleAvatar(
-                              backgroundColor: SportifyColors.card,
-                              child: Icon(Icons.queue_music_outlined),
-                            ),
-                            title: Text(playlist.title),
-                            onTap: () async {
-                              try {
-                                await playlistRepository.addTrackToPlaylist(
-                                  playlistId: playlist.id,
-                                  trackId: track.trackId,
-                                );
-                                if (!sheetContext.mounted) return;
-                                Navigator.of(sheetContext).pop();
-                                _showInfo(
-                                  context,
-                                  'Added to "${playlist.title}"',
-                                );
-                              } catch (_) {
-                                if (!sheetContext.mounted) return;
-                                Navigator.of(sheetContext).pop();
-                                _showInfo(
-                                  context,
-                                  'Failed to add track to playlist.',
-                                );
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      );
-    },
-  );
-}
-
-Future<List<_PlaylistOption>> _loadPlaylistOptions(
-  PlaylistRepository repository,
-) async {
-  final raw = await repository.listPlaylists(limit: 100);
-  return raw
-      .map((item) {
-        final id = (item['id'] ?? '').toString();
-        final title = (item['title'] ?? item['name'] ?? 'Untitled playlist')
-            .toString();
-        if (id.isEmpty) {
-          return null;
-        }
-        return _PlaylistOption(id: id, title: title);
-      })
-      .whereType<_PlaylistOption>()
-      .toList(growable: false);
 }
 
 void _showInfo(BuildContext context, String message) {
