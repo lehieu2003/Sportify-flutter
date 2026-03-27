@@ -14,6 +14,9 @@ import 'features/catalog/presentation/viewmodels/search_view_model.dart';
 import 'features/home/data/repositories/home_repository.dart';
 import 'features/home/data/services/home_api_service.dart';
 import 'features/home/presentation/viewmodels/home_view_model.dart';
+import 'features/jam/data/repositories/jam_repository.dart';
+import 'features/jam/data/services/jam_api_service.dart';
+import 'features/jam/presentation/viewmodels/jam_view_model.dart';
 import 'features/library/data/repositories/library_repository.dart';
 import 'features/library/data/services/library_api_service.dart';
 import 'features/library/presentation/viewmodels/library_view_model.dart';
@@ -73,6 +76,7 @@ Future<void> main() async {
   final collaborativePlaylistRepository = CollaborativePlaylistRepository(
     service: CollaborativePlaylistApiService(authorizedClient),
   );
+  final jamRepository = JamRepository(service: JamApiService(authorizedClient));
   final listeningRepository = ListeningRepository(
     service: ListeningApiService(authorizedClient),
   );
@@ -86,6 +90,7 @@ Future<void> main() async {
       service: PlaybackApiService(authorizedClient),
     ),
   );
+  final jamViewModel = JamViewModel(repository: jamRepository);
 
   runApp(
     SportifyApp(
@@ -98,6 +103,7 @@ Future<void> main() async {
       collaborativePlaylistRepository: collaborativePlaylistRepository,
       catalogRepository: catalogRepository,
       libraryRepository: libraryRepository,
+      jamViewModel: jamViewModel,
     ),
   );
 }

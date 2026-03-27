@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/share/share_content_service.dart';
 import '../../../../core/theme/sportify_theme.dart';
+import '../../../jam/presentation/viewmodels/jam_view_model.dart';
 import '../viewmodels/player_view_model.dart';
 
 class NowPlayingScreen extends StatefulWidget {
@@ -128,8 +129,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PlayerViewModel>(
-      builder: (context, vm, _) {
+    return Consumer2<PlayerViewModel, JamViewModel>(
+      builder: (context, vm, jamVm, _) {
         final state = vm.state;
         final track = state.currentTrack;
         if (track == null) {
@@ -148,6 +149,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             .toDouble();
         final isShuffleActive = state.shuffleEnabled;
         final repeatMode = state.repeatMode;
+        final jamSession = jamVm.state.session;
+        final jamListenerReadOnly =
+            jamSession != null && jamSession.isActive && !jamSession.isHost;
         final repeatIcon = switch (repeatMode) {
           'all' => Icons.repeat,
           'one' => Icons.repeat_one,
@@ -313,6 +317,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           IconButton(
                             onPressed: state.isQueueMutating
                                 ? null
+                                : jamListenerReadOnly
+                                ? null
                                 : vm.toggleShuffle,
                             iconSize: 30,
                             color: isShuffleActive
@@ -323,6 +329,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           IconButton(
                             onPressed: state.isQueueMutating
                                 ? null
+                                : jamListenerReadOnly
+                                ? null
                                 : vm.previousTrack,
                             iconSize: 42,
                             icon: const Icon(
@@ -332,6 +340,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           ),
                           IconButton(
                             onPressed: state.isQueueMutating
+                                ? null
+                                : jamListenerReadOnly
                                 ? null
                                 : vm.togglePlayPause,
                             iconSize: 84,
@@ -345,6 +355,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           IconButton(
                             onPressed: state.isQueueMutating
                                 ? null
+                                : jamListenerReadOnly
+                                ? null
                                 : vm.nextTrack,
                             iconSize: 42,
                             icon: const Icon(
@@ -354,6 +366,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           ),
                           IconButton(
                             onPressed: state.isQueueMutating
+                                ? null
+                                : jamListenerReadOnly
                                 ? null
                                 : vm.cycleRepeatMode,
                             iconSize: 30,
@@ -377,11 +391,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           IconButton(
                             onPressed: state.isQueueMutating
                                 ? null
+                                : jamListenerReadOnly
+                                ? null
                                 : () => _openQueueSheet(vm),
                             icon: const Icon(Icons.playlist_play),
                           ),
                         ],
                       ),
+                      if (jamListenerReadOnly)
+                        const Padding(
+                          padding: EdgeInsets.only(top: SportifySpacing.xs),
+                          child: Text(
+                            'Listener mode: host controls playback in this Jam.',
+                            style: TextStyle(
+                              color: SportifyColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       const SizedBox(height: SportifySpacing.sm),
                       Container(
                         height: 56,

@@ -7,7 +7,9 @@ import '../../../features/playlists/presentation/views/join_playlist_by_code_scr
 import 'create_playlist_name_sheet.dart';
 
 class CreateMenuSheet extends StatefulWidget {
-  const CreateMenuSheet({super.key});
+  const CreateMenuSheet({super.key, required this.onOpenJam});
+
+  final Future<void> Function() onOpenJam;
 
   @override
   State<CreateMenuSheet> createState() => _CreateMenuSheetState();
@@ -75,6 +77,11 @@ class _CreateMenuSheetState extends State<CreateMenuSheet> {
     Navigator.of(context).pop(created);
   }
 
+  Future<void> _onJamTap() async {
+    Navigator.of(context).pop();
+    await widget.onOpenJam();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -110,11 +117,11 @@ class _CreateMenuSheetState extends State<CreateMenuSheet> {
               subtitle: 'Combine tastes in a shared playlist with friends',
               onTap: null,
             ),
-            const _ActionTile(
+            _ActionTile(
               icon: Icons.waves_outlined,
               title: 'Jam',
               subtitle: 'Listen together from anywhere',
-              onTap: null,
+              onTap: _onJamTap,
             ),
           ],
         ),

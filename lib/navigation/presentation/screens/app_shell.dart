@@ -5,8 +5,12 @@ import '../../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../../../features/auth/presentation/views/profile_screen.dart';
 import '../../../features/catalog/presentation/views/search_screen.dart';
 import '../../../features/home/presentation/views/home_screen.dart';
+import '../../../features/jam/presentation/viewmodels/jam_view_model.dart';
+import '../../../features/jam/presentation/views/jam_session_screen.dart';
+import '../../../features/jam/data/models/jam_models.dart';
 import '../../../features/library/presentation/views/library_screen.dart';
 import '../../../features/library/presentation/viewmodels/library_view_model.dart';
+import '../../../features/library/data/repositories/library_repository.dart';
 import '../../../features/player/presentation/views/now_playing_screen.dart';
 import '../../../features/player/presentation/viewmodels/player_view_model.dart';
 import '../../../features/playlists/presentation/views/playlist_detail_screen.dart';
@@ -38,12 +42,173 @@ class _MainLayoutState extends State<MainLayout> {
     const LibraryScreen(),
   ];
 
+  Future<void> _openJamSetup() async {
+    final jamVm = context.read<JamViewModel>();
+    await jamVm.loadActiveSession();
+    if (!mounted) return;
+
+    final active = jamVm.state.session;
+    if (active != null && active.isActive) {
+      if (active.isHost) {
+        final confirmed = await _showStartNewJamDialog();
+        if (!mounted || confirmed != true) return;
+        await jamVm.endSession(active.id);
+        if (!mounted) return;
+      } else {
+        await _openJamSessionSheet(active.id);
+        return;
+      }
+    }
+
+    final authUser =
+        context.read<AuthViewModel>().state.user?.fullName ?? 'hieu';
+    final hostName = authUser.trim().isEmpty
+        ? 'hieu'
+        : authUser.trim().split(' ').first.toLowerCase();
+    final created = await jamVm.createSession(title: "$hostName's Jam");
+    if (!mounted || created == null) return;
+
+    await _syncLikedSongsToJam(created.id);
+    if (!mounted) return;
+    await _openJamSessionSheet(created.id);
+  }
+
+  Future<void> _syncLikedSongsToJam(String sessionId) async {
+    final jamVm = context.read<JamViewModel>();
+    List<String> trackIds = const <String>[];
+    try {
+      final libraryRepository = context.read<LibraryRepository>();
+      final liked = await libraryRepository.getSavedTracks(limit: 200);
+      if (!mounted) return;
+      trackIds = liked
+          .map((item) => item.id.trim())
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+    } catch (_) {
+      if (!mounted) return;
+      trackIds = const <String>[];
+    }
+
+    if (trackIds.isEmpty) {
+      final playerQueue = context.read<PlayerViewModel>().state.queue;
+      trackIds = playerQueue
+          .map((item) => item.id.trim())
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+    }
+    if (trackIds.isEmpty) return;
+
+    await jamVm.syncQueueAsHost(
+      sessionId: sessionId,
+      trackIds: trackIds,
+      queueIndex: 0,
+      currentTrackId: trackIds.first,
+    );
+  }
+
+  Future<void> _openJamSessionSheet(String sessionId) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      builder: (_) {
+        return FractionallySizedBox(
+          heightFactor: 0.86,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: JamSessionScreen(sessionId: sessionId),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool?> _showStartNewJamDialog() async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const Text(
+                  'End your current Jam and start a new one?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 30,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: SportifySpacing.md),
+                const Text(
+                  'Starting a new Jam will end the session that you\'re currently hosting (for everyone).',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: 15,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: SportifySpacing.lg),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: SportifyColors.primary,
+                      foregroundColor: SportifyColors.background,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      'Start new Jam',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text(
+                    'Hủy',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<JamViewModel>().loadActiveSession();
+    });
+  }
+
   Future<void> _openCreateSheet() async {
     final created = await showModalBottomSheet<CreatedPlaylistPayload>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => const CreateMenuSheet(),
+      builder: (_) => CreateMenuSheet(onOpenJam: _openJamSetup),
     );
     if (created == null || !mounted) return;
 
@@ -271,12 +436,15 @@ class BottomNavigator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PlayerViewModel>(
-      builder: (context, playerVm, _) {
+    return Consumer2<PlayerViewModel, JamViewModel>(
+      builder: (context, playerVm, jamVm, _) {
         final playerState = playerVm.state;
+        final jamSession = jamVm.state.session;
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            if (jamSession != null && jamSession.isActive)
+              _MiniJamBar(session: jamSession),
             if (playerState.currentTrack != null)
               _MiniPlayerBar(playerVm: playerVm),
             NavigationBar(
@@ -303,6 +471,187 @@ class BottomNavigator extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _MiniJamBar extends StatefulWidget {
+  const _MiniJamBar({required this.session});
+
+  final JamSession session;
+
+  @override
+  State<_MiniJamBar> createState() => _MiniJamBarState();
+}
+
+class _MiniJamBarState extends State<_MiniJamBar> {
+  static const double _collapsedHeight = 36;
+  static const double _expandedHeight = 74;
+  bool _expanded = false;
+
+  void _expand() {
+    if (_expanded) return;
+    setState(() {
+      _expanded = true;
+    });
+  }
+
+  void _collapse() {
+    if (!_expanded) return;
+    setState(() {
+      _expanded = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = widget.session;
+    final safeIndex = session.queue.items.isEmpty
+        ? 0
+        : session.queue.currentIndex
+              .clamp(0, session.queue.items.length - 1)
+              .toInt();
+    final currentTrack = session.queue.items.isNotEmpty
+        ? session.queue.items[safeIndex]
+        : null;
+    return Material(
+      color: const Color(0xFF0E7CA5),
+      child: GestureDetector(
+        onVerticalDragUpdate: (details) {
+          if (details.delta.dy < -2) {
+            _expand();
+            return;
+          }
+          if (details.delta.dy > 2) {
+            _collapse();
+          }
+        },
+        onVerticalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (velocity < -100) {
+            _expand();
+            return;
+          }
+          if (velocity > 100) {
+            _collapse();
+          }
+        },
+        child: InkWell(
+          onTap: () {
+            showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              useSafeArea: true,
+              backgroundColor: Colors.transparent,
+              barrierColor: Colors.black.withValues(alpha: 0.62),
+              builder: (_) {
+                return FractionallySizedBox(
+                  heightFactor: 0.86,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                    child: JamSessionScreen(sessionId: session.id),
+                  ),
+                );
+              },
+            );
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            height: _expanded ? _expandedHeight : _collapsedHeight,
+            child: ClipRect(
+              child: _expanded
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                      child: Column(
+                        children: <Widget>[
+                          Center(
+                            child: Container(
+                              width: 28,
+                              height: 3,
+                              margin: const EdgeInsets.only(bottom: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xCCFFFFFF),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        session.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: SportifyColors.textPrimary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        currentTrack?.title ??
+                                            'No track synced',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: SportifyColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: SportifyColors.primary,
+                                  child: Text(
+                                    'H',
+                                    style: TextStyle(
+                                      color: SportifyColors.background,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              '${session.title} • ${currentTrack?.title ?? 'No track synced'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: SportifyColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.keyboard_arrow_up,
+                            color: SportifyColors.textPrimary,
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

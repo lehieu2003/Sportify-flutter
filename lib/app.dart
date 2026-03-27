@@ -6,6 +6,7 @@ import 'features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'features/catalog/presentation/viewmodels/search_view_model.dart';
 import 'features/catalog/data/repositories/catalog_repository.dart';
 import 'features/home/presentation/viewmodels/home_view_model.dart';
+import 'features/jam/presentation/viewmodels/jam_view_model.dart';
 import 'features/library/data/repositories/library_repository.dart';
 import 'features/library/presentation/viewmodels/library_view_model.dart';
 import 'features/player/presentation/viewmodels/player_view_model.dart';
@@ -25,6 +26,7 @@ class SportifyApp extends StatelessWidget {
     required this.collaborativePlaylistRepository,
     required this.catalogRepository,
     required this.libraryRepository,
+    required this.jamViewModel,
   });
 
   final HomeViewModel homeViewModel;
@@ -36,6 +38,7 @@ class SportifyApp extends StatelessWidget {
   final CollaborativePlaylistRepository collaborativePlaylistRepository;
   final CatalogRepository catalogRepository;
   final LibraryRepository libraryRepository;
+  final JamViewModel jamViewModel;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +49,7 @@ class SportifyApp extends StatelessWidget {
         ChangeNotifierProvider<SearchViewModel>.value(value: searchViewModel),
         ChangeNotifierProvider<LibraryViewModel>.value(value: libraryViewModel),
         ChangeNotifierProvider<PlayerViewModel>.value(value: playerViewModel),
+        ChangeNotifierProvider<JamViewModel>.value(value: jamViewModel),
         Provider<PlaylistRepository>.value(value: playlistRepository),
         Provider<CollaborativePlaylistRepository>.value(
           value: collaborativePlaylistRepository,
