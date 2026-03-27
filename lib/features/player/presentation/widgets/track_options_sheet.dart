@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/navigation/content_deeplink_navigator.dart';
+import '../../../../core/share/share_content_service.dart';
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../library/data/repositories/library_repository.dart';
@@ -30,7 +31,10 @@ class TrackOptionsData {
 Future<void> showTrackOptionsSheet(
   BuildContext context, {
   required TrackOptionsData track,
+  ShareContentService? shareContentService,
 }) async {
+  final resolvedShareService =
+      shareContentService ?? const ShareContentService();
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -91,12 +95,9 @@ Future<void> showTrackOptionsSheet(
                     _ActionTile(
                       icon: Icons.share_outlined,
                       label: 'Share',
-                      onTap: () {
+                      onTap: () async {
                         Navigator.of(sheetContext).pop();
-                        _showInfo(
-                          context,
-                          'Share will be added in next phase.',
-                        );
+                        await _shareTrack(context, track, resolvedShareService);
                       },
                     ),
                     _ActionTile(
@@ -233,6 +234,23 @@ Future<void> _addToQueue(BuildContext context, TrackOptionsData track) async {
   } catch (_) {
     if (!context.mounted) return;
     _showInfo(context, 'Failed to add track to queue.');
+  }
+}
+
+Future<void> _shareTrack(
+  BuildContext context,
+  TrackOptionsData track,
+  ShareContentService shareContentService,
+) async {
+  try {
+    await shareContentService.shareTrack(
+      trackId: track.trackId,
+      title: track.title,
+      artist: track.artist,
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    _showInfo(context, 'Failed to share track.');
   }
 }
 

@@ -8,6 +8,7 @@ import '../../../../core/config/api_config.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../listening/data/repositories/listening_repository.dart';
 import '../../../playback/data/repositories/playback_repository.dart';
+import '../services/playback_action_coordinator.dart';
 
 class PlayerTrack {
   const PlayerTrack({
@@ -36,6 +37,7 @@ class PlayerUiState {
     required this.duration,
     required this.shuffleEnabled,
     required this.repeatMode,
+    required this.isQueueMutating,
     this.errorMessage,
   });
 
@@ -49,6 +51,7 @@ class PlayerUiState {
       duration = Duration.zero,
       shuffleEnabled = false,
       repeatMode = 'off',
+      isQueueMutating = false,
       errorMessage = null;
 
   final List<PlayerTrack> queue;
@@ -60,6 +63,7 @@ class PlayerUiState {
   final Duration duration;
   final bool shuffleEnabled;
   final String repeatMode;
+  final bool isQueueMutating;
   final String? errorMessage;
 
   PlayerUiState copyWith({
@@ -72,6 +76,7 @@ class PlayerUiState {
     Duration? duration,
     bool? shuffleEnabled,
     String? repeatMode,
+    bool? isQueueMutating,
     String? errorMessage,
     bool clearTrack = false,
   }) {
@@ -85,6 +90,7 @@ class PlayerUiState {
       duration: duration ?? this.duration,
       shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
       repeatMode: repeatMode ?? this.repeatMode,
+      isQueueMutating: isQueueMutating ?? this.isQueueMutating,
       errorMessage: errorMessage,
     );
   }
@@ -156,6 +162,8 @@ class PlayerViewModel extends ChangeNotifier {
   bool _hasRestoredPlayback = false;
   Timer? _seekSyncDebounce;
   final Random _random = Random();
+  final PlaybackActionCoordinator _playbackActionCoordinator =
+      PlaybackActionCoordinator();
 
   PlayerUiState get state => _state;
 
@@ -442,46 +450,48 @@ class PlayerViewModel extends ChangeNotifier {
   Future<void> jumpToQueueIndex(int index, {bool autoPlay = true}) async {
     await _waitForRestore();
     if (_state.queue.isEmpty) return;
-    final snapshot = _createQueueSnapshot();
-    final safeIndex = index.clamp(0, _state.queue.length - 1);
-    final track = _state.queue[safeIndex];
-    try {
-      await _audioPlayer.seek(Duration.zero, index: safeIndex);
-      if (autoPlay) {
-        await _audioPlayer.play();
-      } else {
-        await _audioPlayer.pause();
-      }
-      _state = _state.copyWith(
-        queueIndex: safeIndex,
-        currentTrack: track,
-        position: Duration.zero,
-        isPlaying: autoPlay,
-        errorMessage: null,
-      );
-      notifyListeners();
-      await _withSingleRetry(
-        () => _playbackRepository.selectQueueIndex(index: safeIndex),
-      );
-      if (!autoPlay) {
+    await _runQueueMutation('select', () async {
+      final snapshot = _createQueueSnapshot();
+      final safeIndex = index.clamp(0, _state.queue.length - 1);
+      final track = _state.queue[safeIndex];
+      try {
+        await _audioPlayer.seek(Duration.zero, index: safeIndex);
+        if (autoPlay) {
+          await _audioPlayer.play();
+        } else {
+          await _audioPlayer.pause();
+        }
+        _state = _state.copyWith(
+          queueIndex: safeIndex,
+          currentTrack: track,
+          position: Duration.zero,
+          isPlaying: autoPlay,
+          errorMessage: null,
+        );
+        notifyListeners();
         await _withSingleRetry(
-          () => _playbackRepository.updateState(
-            currentTrackId: track.id,
-            queueIndex: safeIndex,
-            isPlaying: false,
-            positionMs: 0,
-            shuffleEnabled: _state.shuffleEnabled,
-            repeatMode: _state.repeatMode,
-          ),
+          () => _playbackRepository.selectQueueIndex(index: safeIndex),
+        );
+        if (!autoPlay) {
+          await _withSingleRetry(
+            () => _playbackRepository.updateState(
+              currentTrackId: track.id,
+              queueIndex: safeIndex,
+              isPlaying: false,
+              positionMs: 0,
+              shuffleEnabled: _state.shuffleEnabled,
+              repeatMode: _state.repeatMode,
+            ),
+          );
+        }
+      } catch (error) {
+        debugPrint('jumpToQueueIndex failed: $error');
+        await _restoreQueueSnapshot(
+          snapshot,
+          errorMessage: 'Failed to select queue track.',
         );
       }
-    } catch (error) {
-      debugPrint('jumpToQueueIndex failed: $error');
-      await _restoreQueueSnapshot(
-        snapshot,
-        errorMessage: 'Failed to select queue track.',
-      );
-    }
+    });
   }
 
   Future<void> removeFromQueueAt(int index) async {
@@ -495,66 +505,68 @@ class PlayerViewModel extends ChangeNotifier {
       return;
     }
     if (index < 0 || index >= queue.length) return;
-    final snapshot = _createQueueSnapshot();
-    final removedTrackId = queue[index].id;
+    await _runQueueMutation('remove', () async {
+      final snapshot = _createQueueSnapshot();
+      final removedTrackId = queue[index].id;
 
-    final updatedQueue = List<PlayerTrack>.from(queue)..removeAt(index);
-    final wasPlaying = _state.isPlaying;
-    var nextIndex = _state.queueIndex;
-    if (index < nextIndex) {
-      nextIndex -= 1;
-    } else if (index == nextIndex) {
-      nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
-    }
-    nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
-
-    try {
-      final sources = updatedQueue
-          .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
-          .toList(growable: false);
-      await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
-      await _audioPlayer.seek(Duration.zero, index: nextIndex);
-      if (wasPlaying) {
-        await _audioPlayer.play();
-      } else {
-        await _audioPlayer.pause();
+      final updatedQueue = List<PlayerTrack>.from(queue)..removeAt(index);
+      final wasPlaying = _state.isPlaying;
+      var nextIndex = _state.queueIndex;
+      if (index < nextIndex) {
+        nextIndex -= 1;
+      } else if (index == nextIndex) {
+        nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
       }
+      nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
 
-      final currentTrack = updatedQueue[nextIndex];
-      _state = _state.copyWith(
-        queue: updatedQueue,
-        queueIndex: nextIndex,
-        currentTrack: currentTrack,
-        position: Duration.zero,
-        isPlaying: wasPlaying,
-        errorMessage: null,
-      );
-      notifyListeners();
+      try {
+        final sources = updatedQueue
+            .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+            .toList(growable: false);
+        await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
+        await _audioPlayer.seek(Duration.zero, index: nextIndex);
+        if (wasPlaying) {
+          await _audioPlayer.play();
+        } else {
+          await _audioPlayer.pause();
+        }
 
-      final payload = await _withSingleRetry(
-        () => _playbackRepository.removeFromQueue(trackId: removedTrackId),
-      );
-      if (!_isQueuePayloadAligned(
-        payload,
-        expectedLength: updatedQueue.length,
-        expectedIndex: nextIndex,
-        expectedTrackIds: updatedQueue
-            .map((item) => item.id)
-            .toList(growable: false),
-      )) {
-        await _syncQueueFallback(
+        final currentTrack = updatedQueue[nextIndex];
+        _state = _state.copyWith(
           queue: updatedQueue,
-          currentIndex: nextIndex,
+          queueIndex: nextIndex,
+          currentTrack: currentTrack,
+          position: Duration.zero,
           isPlaying: wasPlaying,
+          errorMessage: null,
+        );
+        notifyListeners();
+
+        final payload = await _withSingleRetry(
+          () => _playbackRepository.removeFromQueue(trackId: removedTrackId),
+        );
+        if (!_isQueuePayloadAligned(
+          payload,
+          expectedLength: updatedQueue.length,
+          expectedIndex: nextIndex,
+          expectedTrackIds: updatedQueue
+              .map((item) => item.id)
+              .toList(growable: false),
+        )) {
+          await _syncQueueFallback(
+            queue: updatedQueue,
+            currentIndex: nextIndex,
+            isPlaying: wasPlaying,
+          );
+        }
+      } catch (error) {
+        debugPrint('removeFromQueueAt failed: $error');
+        await _restoreQueueSnapshot(
+          snapshot,
+          errorMessage: 'Failed to remove queue track.',
         );
       }
-    } catch (error) {
-      debugPrint('removeFromQueueAt failed: $error');
-      await _restoreQueueSnapshot(
-        snapshot,
-        errorMessage: 'Failed to remove queue track.',
-      );
-    }
+    });
   }
 
   Future<void> reorderQueue({
@@ -571,70 +583,72 @@ class PlayerViewModel extends ChangeNotifier {
       return;
     }
     if (fromIndex == toIndex) return;
-    final snapshot = _createQueueSnapshot();
+    await _runQueueMutation('reorder', () async {
+      final snapshot = _createQueueSnapshot();
 
-    final updatedQueue = List<PlayerTrack>.from(queue);
-    final moved = updatedQueue.removeAt(fromIndex);
-    updatedQueue.insert(toIndex, moved);
+      final updatedQueue = List<PlayerTrack>.from(queue);
+      final moved = updatedQueue.removeAt(fromIndex);
+      updatedQueue.insert(toIndex, moved);
 
-    var nextIndex = _state.queueIndex;
-    if (nextIndex == fromIndex) {
-      nextIndex = toIndex;
-    } else if (fromIndex < nextIndex && toIndex >= nextIndex) {
-      nextIndex -= 1;
-    } else if (fromIndex > nextIndex && toIndex <= nextIndex) {
-      nextIndex += 1;
-    }
-    nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
-
-    try {
-      final wasPlaying = _state.isPlaying;
-      final sources = updatedQueue
-          .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
-          .toList(growable: false);
-      await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
-      if (wasPlaying) {
-        await _audioPlayer.play();
-      } else {
-        await _audioPlayer.pause();
+      var nextIndex = _state.queueIndex;
+      if (nextIndex == fromIndex) {
+        nextIndex = toIndex;
+      } else if (fromIndex < nextIndex && toIndex >= nextIndex) {
+        nextIndex -= 1;
+      } else if (fromIndex > nextIndex && toIndex <= nextIndex) {
+        nextIndex += 1;
       }
-      final currentTrack = updatedQueue[nextIndex];
-      _state = _state.copyWith(
-        queue: updatedQueue,
-        queueIndex: nextIndex,
-        currentTrack: currentTrack,
-        position: Duration.zero,
-        isPlaying: wasPlaying,
-        errorMessage: null,
-      );
-      notifyListeners();
-      final payload = await _withSingleRetry(
-        () => _playbackRepository.reorderQueue(
-          fromIndex: fromIndex,
-          toIndex: toIndex,
-        ),
-      );
-      if (!_isQueuePayloadAligned(
-        payload,
-        expectedLength: updatedQueue.length,
-        expectedIndex: nextIndex,
-        expectedTrackIds: updatedQueue
-            .map((item) => item.id)
-            .toList(growable: false),
-      )) {
-        await _syncQueueFallback(
+      nextIndex = nextIndex.clamp(0, updatedQueue.length - 1);
+
+      try {
+        final wasPlaying = _state.isPlaying;
+        final sources = updatedQueue
+            .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+            .toList(growable: false);
+        await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
+        if (wasPlaying) {
+          await _audioPlayer.play();
+        } else {
+          await _audioPlayer.pause();
+        }
+        final currentTrack = updatedQueue[nextIndex];
+        _state = _state.copyWith(
           queue: updatedQueue,
-          currentIndex: nextIndex,
+          queueIndex: nextIndex,
+          currentTrack: currentTrack,
+          position: Duration.zero,
           isPlaying: wasPlaying,
+          errorMessage: null,
+        );
+        notifyListeners();
+        final payload = await _withSingleRetry(
+          () => _playbackRepository.reorderQueue(
+            fromIndex: fromIndex,
+            toIndex: toIndex,
+          ),
+        );
+        if (!_isQueuePayloadAligned(
+          payload,
+          expectedLength: updatedQueue.length,
+          expectedIndex: nextIndex,
+          expectedTrackIds: updatedQueue
+              .map((item) => item.id)
+              .toList(growable: false),
+        )) {
+          await _syncQueueFallback(
+            queue: updatedQueue,
+            currentIndex: nextIndex,
+            isPlaying: wasPlaying,
+          );
+        }
+      } catch (error) {
+        debugPrint('reorderQueue failed: $error');
+        await _restoreQueueSnapshot(
+          snapshot,
+          errorMessage: 'Failed to reorder queue.',
         );
       }
-    } catch (error) {
-      debugPrint('reorderQueue failed: $error');
-      await _restoreQueueSnapshot(
-        snapshot,
-        errorMessage: 'Failed to reorder queue.',
-      );
-    }
+    });
   }
 
   Future<void> addToQueue(PlayerTrack track) async {
@@ -650,59 +664,66 @@ class PlayerViewModel extends ChangeNotifier {
       return;
     }
 
-    final snapshot = _createQueueSnapshot();
-    final updatedQueue = <PlayerTrack>[...snapshot.queue, track];
-    final currentIndex = snapshot.queueIndex.clamp(0, updatedQueue.length - 1);
-
-    try {
-      final sources = updatedQueue
-          .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
-          .toList(growable: false);
-      await _audioPlayer.setAudioSources(sources, initialIndex: currentIndex);
-      await _audioPlayer.seek(snapshot.position, index: currentIndex);
-      if (snapshot.isPlaying) {
-        await _audioPlayer.play();
-      } else {
-        await _audioPlayer.pause();
-      }
-
-      _state = _state.copyWith(
-        queue: updatedQueue,
-        queueIndex: currentIndex,
-        currentTrack: updatedQueue[currentIndex],
-        isPlaying: snapshot.isPlaying,
-        position: snapshot.position,
-        errorMessage: null,
-      );
-      notifyListeners();
-
-      await _withSingleRetry(
-        () => _playbackRepository.setQueue(
-          trackIds: updatedQueue.map((item) => item.id).toList(growable: false),
-          currentIndex: currentIndex,
-        ),
+    await _runQueueMutation('add', () async {
+      final snapshot = _createQueueSnapshot();
+      final updatedQueue = <PlayerTrack>[...snapshot.queue, track];
+      final currentIndex = snapshot.queueIndex.clamp(
+        0,
+        updatedQueue.length - 1,
       );
 
-      final currentTrack = _state.currentTrack;
-      if (currentTrack != null) {
+      try {
+        final sources = updatedQueue
+            .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+            .toList(growable: false);
+        await _audioPlayer.setAudioSources(sources, initialIndex: currentIndex);
+        await _audioPlayer.seek(snapshot.position, index: currentIndex);
+        if (snapshot.isPlaying) {
+          await _audioPlayer.play();
+        } else {
+          await _audioPlayer.pause();
+        }
+
+        _state = _state.copyWith(
+          queue: updatedQueue,
+          queueIndex: currentIndex,
+          currentTrack: updatedQueue[currentIndex],
+          isPlaying: snapshot.isPlaying,
+          position: snapshot.position,
+          errorMessage: null,
+        );
+        notifyListeners();
+
         await _withSingleRetry(
-          () => _playbackRepository.updateState(
-            currentTrackId: currentTrack.id,
-            queueIndex: currentIndex,
-            isPlaying: _state.isPlaying,
-            positionMs: _audioPlayer.position.inMilliseconds,
-            shuffleEnabled: _state.shuffleEnabled,
-            repeatMode: _state.repeatMode,
+          () => _playbackRepository.setQueue(
+            trackIds: updatedQueue
+                .map((item) => item.id)
+                .toList(growable: false),
+            currentIndex: currentIndex,
           ),
         );
+
+        final currentTrack = _state.currentTrack;
+        if (currentTrack != null) {
+          await _withSingleRetry(
+            () => _playbackRepository.updateState(
+              currentTrackId: currentTrack.id,
+              queueIndex: currentIndex,
+              isPlaying: _state.isPlaying,
+              positionMs: _audioPlayer.position.inMilliseconds,
+              shuffleEnabled: _state.shuffleEnabled,
+              repeatMode: _state.repeatMode,
+            ),
+          );
+        }
+      } catch (error) {
+        debugPrint('addToQueue failed: $error');
+        await _restoreQueueSnapshot(
+          snapshot,
+          errorMessage: 'Failed to add track to queue.',
+        );
       }
-    } catch (error) {
-      debugPrint('addToQueue failed: $error');
-      await _restoreQueueSnapshot(
-        snapshot,
-        errorMessage: 'Failed to add track to queue.',
-      );
-    }
+    });
   }
 
   Future<void> toggleShuffle() async {
@@ -737,6 +758,25 @@ class PlayerViewModel extends ChangeNotifier {
     final inFlight = _restoreFuture;
     if (inFlight != null) {
       await inFlight;
+    }
+  }
+
+  Future<void> _runQueueMutation(
+    String actionKey,
+    Future<void> Function() action,
+  ) async {
+    final started = _playbackActionCoordinator.tryStart(actionKey);
+    if (!started) return;
+    _state = _state.copyWith(isQueueMutating: true);
+    notifyListeners();
+    try {
+      await action();
+    } finally {
+      _playbackActionCoordinator.finish(actionKey);
+      _state = _state.copyWith(
+        isQueueMutating: _playbackActionCoordinator.hasInFlightActions,
+      );
+      notifyListeners();
     }
   }
 
