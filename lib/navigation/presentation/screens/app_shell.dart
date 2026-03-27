@@ -56,6 +56,8 @@ class _MainLayoutState extends State<MainLayout> {
         builder: (_) => PlaylistDetailScreen(
           playlistId: created.id,
           initialTitle: created.title,
+          isCollaborativeHint: created.isCollaborative,
+          openMembersOnLaunch: created.isCollaborative,
         ),
       ),
     );

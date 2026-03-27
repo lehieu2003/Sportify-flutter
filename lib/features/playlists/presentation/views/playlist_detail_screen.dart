@@ -8,6 +8,7 @@ import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../library/presentation/viewmodels/library_view_model.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
 import '../../../player/presentation/widgets/track_options_sheet.dart';
+import 'playlist_members_screen.dart';
 import '../../data/models/playlist_models.dart';
 import '../../data/repositories/playlist_repository.dart';
 
@@ -15,11 +16,15 @@ class PlaylistDetailScreen extends StatefulWidget {
   const PlaylistDetailScreen({
     required this.playlistId,
     this.initialTitle,
+    this.isCollaborativeHint = false,
+    this.openMembersOnLaunch = false,
     super.key,
   });
 
   final String playlistId;
   final String? initialTitle;
+  final bool isCollaborativeHint;
+  final bool openMembersOnLaunch;
 
   @override
   State<PlaylistDetailScreen> createState() => _PlaylistDetailScreenState();
@@ -36,6 +41,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   final Set<String> _addingTrackIds = <String>{};
   bool _isMutatingTracks = false;
   bool _isSavingPlaylistMeta = false;
+  bool _didAutoOpenMembers = false;
 
   @override
   void initState() {
@@ -60,6 +66,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       _isLoading = false;
       setState(() {});
       await _loadRecommended(reset: true, query: _playlist?.title);
+      if (widget.openMembersOnLaunch && !_didAutoOpenMembers) {
+        _didAutoOpenMembers = true;
+        if (!mounted) return;
+        await _openManageMembers();
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -369,6 +380,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         coverUrl: current.coverUrl,
         isPublic: result.isPublic,
         trackCount: current.trackCount,
+        ownerName: current.ownerName,
+        memberRole: current.memberRole,
+        isCollaborative: current.isCollaborative,
       );
     });
     try {
@@ -409,6 +423,22 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     }
   }
 
+  Future<void> _openManageMembers() async {
+    final playlist = _playlist;
+    if (playlist == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlaylistMembersScreen(
+          playlistId: playlist.id,
+          playlistTitle: playlist.title,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _reloadTracks();
+    await _refreshLibrary();
+  }
+
   Future<void> _openAddToPlaylistPicker() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -427,14 +457,26 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final title = _playlist?.title ?? widget.initialTitle ?? 'Playlist';
-    var ownerName = 'You';
+    final ownerFromPlaylist = _playlist?.ownerName.trim();
+    var ownerName = ownerFromPlaylist != null && ownerFromPlaylist.isNotEmpty
+        ? ownerFromPlaylist
+        : 'You';
     try {
       final vm = context.read<AuthViewModel>();
       final fullName = vm.state.user?.fullName;
-      if (fullName != null && fullName.trim().isNotEmpty) {
+      if (ownerName == 'You' &&
+          fullName != null &&
+          fullName.trim().isNotEmpty) {
         ownerName = fullName.trim();
       }
     } catch (_) {}
+    final memberRole = _playlist?.memberRole ?? '';
+    final canManageMembers =
+        memberRole == 'owner' ||
+        memberRole == 'editor' ||
+        memberRole == 'viewer';
+    final isCollaborative =
+        (_playlist?.isCollaborative ?? false) || widget.isCollaborativeHint;
     final canLoadMoreRecommended =
         _recommendedCursor != null && _recommendedCursor!.isNotEmpty;
 
@@ -462,8 +504,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                         title: title,
                         ownerName: ownerName,
                         isPublic: _playlist?.isPublic ?? false,
+                        isCollaborative: isCollaborative,
+                        canManageMembers: canManageMembers,
                         isSaving: _isSavingPlaylistMeta,
                         onEdit: _openEditDialog,
+                        onManageMembers: _openManageMembers,
                       ),
                     ),
                   ),
@@ -692,15 +737,21 @@ class _PlaylistHeader extends StatelessWidget {
     required this.title,
     required this.ownerName,
     required this.isPublic,
+    required this.isCollaborative,
+    required this.canManageMembers,
     required this.isSaving,
     required this.onEdit,
+    required this.onManageMembers,
   });
 
   final String title;
   final String ownerName;
   final bool isPublic;
+  final bool isCollaborative;
+  final bool canManageMembers;
   final bool isSaving;
   final VoidCallback onEdit;
+  final VoidCallback onManageMembers;
 
   @override
   Widget build(BuildContext context) {
@@ -790,6 +841,29 @@ class _PlaylistHeader extends StatelessWidget {
                             ),
                           ],
                         ),
+                        if (isCollaborative) ...<Widget>[
+                          const SizedBox(height: SportifySpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: SportifySpacing.sm,
+                              vertical: SportifySpacing.xs,
+                            ),
+                            decoration: BoxDecoration(
+                              color: SportifyColors.primary.withValues(
+                                alpha: 0.18,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Text(
+                              'Collaborative',
+                              style: TextStyle(
+                                color: SportifyColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -813,12 +887,35 @@ class _PlaylistHeader extends StatelessWidget {
                   isPublic ? Icons.public : Icons.lock_outline,
                   color: SportifyColors.textSecondary,
                 ),
-                SizedBox(width: SportifySpacing.md),
-                Icon(
-                  Icons.person_add_alt_1,
-                  color: SportifyColors.textSecondary,
-                ),
-                SizedBox(width: SportifySpacing.md),
+                const SizedBox(width: SportifySpacing.md),
+                if (canManageMembers)
+                  InkWell(
+                    onTap: onManageMembers,
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: SportifySpacing.xs,
+                        vertical: SportifySpacing.xs,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Icon(
+                            Icons.groups_outlined,
+                            color: SportifyColors.textSecondary,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Manage members',
+                            style: TextStyle(
+                              color: SportifyColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: SportifySpacing.md),
                 Icon(Icons.more_vert, color: SportifyColors.textSecondary),
               ],
             ),

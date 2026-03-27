@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/sportify_theme.dart';
 import '../../../features/library/presentation/viewmodels/library_view_model.dart';
+import '../../../features/playlists/presentation/views/join_playlist_by_code_screen.dart';
 import 'create_playlist_name_sheet.dart';
 
 class CreateMenuSheet extends StatefulWidget {
@@ -15,6 +16,58 @@ class CreateMenuSheet extends StatefulWidget {
 class _CreateMenuSheetState extends State<CreateMenuSheet> {
   Future<void> _onPlaylistTap() async {
     final created = await showCreatePlaylistNameSheet(context);
+    if (created == null || !mounted) return;
+    final libraryVm = context.read<LibraryViewModel>();
+    await libraryVm.loadSavedTracks();
+    if (!mounted) return;
+    Navigator.of(context).pop(created);
+  }
+
+  Future<void> _onCollaborativeTap() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: SportifyColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.group_add_outlined),
+              title: const Text('Create collaborative playlist'),
+              onTap: () => Navigator.of(context).pop('create'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.confirmation_number_outlined),
+              title: const Text('Join by invite code'),
+              onTap: () => Navigator.of(context).pop('join'),
+            ),
+            const SizedBox(height: SportifySpacing.sm),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+
+    if (action == 'join') {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const JoinPlaylistByCodeScreen(),
+        ),
+      );
+      if (!mounted) return;
+      await context.read<LibraryViewModel>().loadSavedTracks();
+      return;
+    }
+
+    final created = await showCreatePlaylistNameSheet(
+      context,
+      isCollaborative: true,
+      title: 'Give your collaborative playlist a name',
+    );
     if (created == null || !mounted) return;
     final libraryVm = context.read<LibraryViewModel>();
     await libraryVm.loadSavedTracks();
@@ -45,11 +98,11 @@ class _CreateMenuSheetState extends State<CreateMenuSheet> {
               subtitle: 'Build a playlist with songs, or episodes',
               onTap: _onPlaylistTap,
             ),
-            const _ActionTile(
+            _ActionTile(
               icon: Icons.groups_outlined,
               title: 'Collaborative Playlist',
               subtitle: 'Invite friends and create something together',
-              onTap: null,
+              onTap: _onCollaborativeTap,
             ),
             const _ActionTile(
               icon: Icons.blur_circular_outlined,

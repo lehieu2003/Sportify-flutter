@@ -5,21 +5,31 @@ import '../../../core/theme/sportify_theme.dart';
 import '../../../features/playlists/data/repositories/playlist_repository.dart';
 
 class CreatedPlaylistPayload {
-  const CreatedPlaylistPayload({required this.id, required this.title});
+  const CreatedPlaylistPayload({
+    required this.id,
+    required this.title,
+    required this.isCollaborative,
+  });
 
   final String id;
   final String title;
+  final bool isCollaborative;
 }
 
 Future<CreatedPlaylistPayload?> showCreatePlaylistNameSheet(
-  BuildContext context,
-) {
+  BuildContext context, {
+  bool isCollaborative = false,
+  String? title,
+}) {
   return Navigator.of(context).push<CreatedPlaylistPayload>(
     PageRouteBuilder<CreatedPlaylistPayload>(
       opaque: false,
       barrierDismissible: true,
       barrierColor: const Color(0xAA000000),
-      pageBuilder: (_, __, ___) => const _CreatePlaylistNameScreen(),
+      pageBuilder: (_, __, ___) => _CreatePlaylistNameScreen(
+        isCollaborative: isCollaborative,
+        title: title,
+      ),
       transitionsBuilder: (_, animation, __, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -41,7 +51,10 @@ Future<CreatedPlaylistPayload?> showCreatePlaylistNameSheet(
 }
 
 class _CreatePlaylistNameScreen extends StatefulWidget {
-  const _CreatePlaylistNameScreen();
+  const _CreatePlaylistNameScreen({required this.isCollaborative, this.title});
+
+  final bool isCollaborative;
+  final String? title;
 
   @override
   State<_CreatePlaylistNameScreen> createState() =>
@@ -117,6 +130,7 @@ class _CreatePlaylistNameScreenState extends State<_CreatePlaylistNameScreen> {
         CreatedPlaylistPayload(
           id: id,
           title: (payload['title'] ?? title).toString(),
+          isCollaborative: widget.isCollaborative,
         ),
       );
     } catch (error) {
@@ -150,8 +164,8 @@ class _CreatePlaylistNameScreenState extends State<_CreatePlaylistNameScreen> {
             child: Column(
               children: <Widget>[
                 const Spacer(flex: 2),
-                const Text(
-                  'Give your playlist a name',
+                Text(
+                  widget.title ?? 'Give your playlist a name',
                   style: TextStyle(
                     color: SportifyColors.textPrimary,
                     fontSize: 36,

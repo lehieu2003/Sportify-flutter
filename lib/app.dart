@@ -10,6 +10,7 @@ import 'features/library/data/repositories/library_repository.dart';
 import 'features/library/presentation/viewmodels/library_view_model.dart';
 import 'features/player/presentation/viewmodels/player_view_model.dart';
 import 'features/playlists/data/repositories/playlist_repository.dart';
+import 'features/playlists/data/repositories/collaborative_playlist_repository.dart';
 import 'navigation/presentation/screens/app_gate.dart';
 
 class SportifyApp extends StatelessWidget {
@@ -21,6 +22,7 @@ class SportifyApp extends StatelessWidget {
     required this.libraryViewModel,
     required this.playerViewModel,
     required this.playlistRepository,
+    required this.collaborativePlaylistRepository,
     required this.catalogRepository,
     required this.libraryRepository,
   });
@@ -31,6 +33,7 @@ class SportifyApp extends StatelessWidget {
   final LibraryViewModel libraryViewModel;
   final PlayerViewModel playerViewModel;
   final PlaylistRepository playlistRepository;
+  final CollaborativePlaylistRepository collaborativePlaylistRepository;
   final CatalogRepository catalogRepository;
   final LibraryRepository libraryRepository;
 
@@ -44,6 +47,9 @@ class SportifyApp extends StatelessWidget {
         ChangeNotifierProvider<LibraryViewModel>.value(value: libraryViewModel),
         ChangeNotifierProvider<PlayerViewModel>.value(value: playerViewModel),
         Provider<PlaylistRepository>.value(value: playlistRepository),
+        Provider<CollaborativePlaylistRepository>.value(
+          value: collaborativePlaylistRepository,
+        ),
         Provider<CatalogRepository>.value(value: catalogRepository),
         Provider<LibraryRepository>.value(value: libraryRepository),
       ],

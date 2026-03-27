@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/navigation/content_deeplink_navigator.dart';
 import '../../../../core/theme/sportify_theme.dart';
 import '../../../player/presentation/viewmodels/player_view_model.dart';
+import '../../../playlists/presentation/views/join_playlist_by_code_screen.dart';
 import '../viewmodels/library_view_model.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -46,9 +47,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: SportifySpacing.md,
                   ),
-                  child: Text(
-                    'Your Library',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          'Your Library',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const JoinPlaylistByCodeScreen(),
+                            ),
+                          );
+                          if (!context.mounted) return;
+                          await vm.loadSavedTracks();
+                        },
+                        tooltip: 'Join by code',
+                        icon: const Icon(Icons.confirmation_number_outlined),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -119,7 +139,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         child: Icon(Icons.queue_music_outlined),
                       ),
                       title: Text(playlist.title),
-                      subtitle: Text('${playlist.trackCount} tracks'),
+                      subtitle: Text(
+                        playlist.isOwner
+                            ? '${playlist.trackCount} tracks'
+                            : 'Owner: ${playlist.ownerName.isEmpty ? 'Unknown' : playlist.ownerName}',
+                      ),
                       trailing: Icon(
                         playlist.isPublic ? Icons.public : Icons.lock_outline,
                         size: 18,

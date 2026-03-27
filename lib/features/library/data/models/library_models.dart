@@ -20,8 +20,12 @@ class LibraryTrack {
       id: (json['id'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
       artist: (json['artist'] ?? '').toString(),
-      coverUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
-      audioUrl: ApiConfig.resolveUrl((json['audioUrl'] ?? json['audio_url'])?.toString()),
+      coverUrl: ApiConfig.resolveUrl(
+        (json['coverUrl'] ?? json['cover_url'])?.toString(),
+      ),
+      audioUrl: ApiConfig.resolveUrl(
+        (json['audioUrl'] ?? json['audio_url'])?.toString(),
+      ),
     );
   }
 }
@@ -33,6 +37,10 @@ class LibraryPlaylist {
     required this.description,
     required this.trackCount,
     required this.isPublic,
+    this.ownerName = '',
+    this.memberRole = '',
+    this.isOwner = false,
+    this.isCollaborative = false,
   });
 
   final String id;
@@ -40,6 +48,10 @@ class LibraryPlaylist {
   final String description;
   final int trackCount;
   final bool isPublic;
+  final String ownerName;
+  final String memberRole;
+  final bool isOwner;
+  final bool isCollaborative;
 
   factory LibraryPlaylist.fromJson(Map<String, dynamic> json) {
     final rawTrackCount = json['trackCount'];
@@ -60,6 +72,10 @@ class LibraryPlaylist {
       description: (json['description'] ?? '').toString(),
       trackCount: parsedTrackCount,
       isPublic: parsedPublic,
+      ownerName: (json['ownerName'] ?? '').toString(),
+      memberRole: (json['memberRole'] ?? '').toString(),
+      isOwner: json['isOwner'] == true,
+      isCollaborative: json['isCollaborative'] == true,
     );
   }
 }
@@ -87,7 +103,9 @@ class LibraryAlbum {
       artistId: (json['artistId'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
       artist: (json['artist'] ?? '').toString(),
-      coverUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
+      coverUrl: ApiConfig.resolveUrl(
+        (json['coverUrl'] ?? json['cover_url'])?.toString(),
+      ),
       trackCount: switch (json['trackCount']) {
         int value => value,
         String value => int.tryParse(value) ?? 0,
@@ -114,7 +132,9 @@ class LibraryArtist {
     return LibraryArtist(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
-      imageUrl: ApiConfig.resolveUrl((json['imageUrl'] ?? json['image_url'])?.toString()),
+      imageUrl: ApiConfig.resolveUrl(
+        (json['imageUrl'] ?? json['image_url'])?.toString(),
+      ),
       albumCount: switch (json['albumCount']) {
         int value => value,
         String value => int.tryParse(value) ?? 0,
@@ -125,10 +145,7 @@ class LibraryArtist {
 }
 
 class CursorPage<T> {
-  const CursorPage({
-    required this.items,
-    required this.nextCursor,
-  });
+  const CursorPage({required this.items, required this.nextCursor});
 
   final List<T> items;
   final String? nextCursor;

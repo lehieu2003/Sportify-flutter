@@ -23,6 +23,8 @@ import 'features/player/presentation/viewmodels/player_view_model.dart';
 import 'features/playback/data/repositories/playback_repository.dart';
 import 'features/playback/data/services/playback_api_service.dart';
 import 'features/playlists/data/repositories/playlist_repository.dart';
+import 'features/playlists/data/repositories/collaborative_playlist_repository.dart';
+import 'features/playlists/data/services/collaborative_playlist_api_service.dart';
 import 'features/playlists/data/services/playlist_api_service.dart';
 
 Future<void> main() async {
@@ -68,6 +70,9 @@ Future<void> main() async {
   final playlistRepository = PlaylistRepository(
     service: PlaylistApiService(authorizedClient),
   );
+  final collaborativePlaylistRepository = CollaborativePlaylistRepository(
+    service: CollaborativePlaylistApiService(authorizedClient),
+  );
   final listeningRepository = ListeningRepository(
     service: ListeningApiService(authorizedClient),
   );
@@ -90,6 +95,7 @@ Future<void> main() async {
       libraryViewModel: libraryViewModel,
       playerViewModel: playerViewModel,
       playlistRepository: playlistRepository,
+      collaborativePlaylistRepository: collaborativePlaylistRepository,
       catalogRepository: catalogRepository,
       libraryRepository: libraryRepository,
     ),
