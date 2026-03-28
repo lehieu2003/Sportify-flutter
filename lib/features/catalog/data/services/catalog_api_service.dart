@@ -16,9 +16,7 @@ class CatalogApiService {
     int limit = 20,
     String? cursor,
   }) async {
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/api/v1/tracks',
-    ).replace(
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/tracks').replace(
       queryParameters: <String, String>{
         if (query != null && query.trim().isNotEmpty) 'query': query.trim(),
         if (genre != null && genre.trim().isNotEmpty) 'genre': genre.trim(),
@@ -37,11 +35,10 @@ class CatalogApiService {
       );
     }
 
-    final items =
-        (payload['items'] as List<dynamic>? ?? const <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .map(CatalogTrack.fromJson)
-            .toList(growable: false);
+    final items = (payload['items'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .map(CatalogTrack.fromJson)
+        .toList(growable: false);
     return CatalogTracksPage(
       items: items,
       nextCursor: payload['nextCursor'] as String?,
@@ -63,7 +60,9 @@ class CatalogApiService {
   }
 
   Future<CatalogArtist> getArtistById(String artistId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/tracks/artists/$artistId');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/tracks/artists/$artistId',
+    );
     final response = await _client.get(uri);
     final payload = decodeJsonObject(response.body);
     if (response.statusCode != 200) {
@@ -91,7 +90,9 @@ class CatalogApiService {
   }
 
   Future<List<CatalogTrack>> getAlbumTracks(String albumId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/tracks/albums/$albumId/tracks');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/tracks/albums/$albumId/tracks',
+    );
     final response = await _client.get(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);
@@ -101,14 +102,18 @@ class CatalogApiService {
         fallback: 'Failed to fetch album tracks.',
       );
     }
-    return decodeJsonObjectList(response.body)
-        .map(CatalogTrack.fromJson)
-        .toList(growable: false);
+    return decodeJsonObjectList(
+      response.body,
+    ).map(CatalogTrack.fromJson).toList(growable: false);
   }
 
-  Future<List<CatalogTrack>> getArtistTopTracks(String artistId, {int limit = 10}) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/tracks/artists/$artistId/top-tracks')
-        .replace(queryParameters: <String, String>{'limit': '$limit'});
+  Future<List<CatalogTrack>> getArtistTopTracks(
+    String artistId, {
+    int limit = 10,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/tracks/artists/$artistId/top-tracks',
+    ).replace(queryParameters: <String, String>{'limit': '$limit'});
     final response = await _client.get(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);
@@ -118,9 +123,9 @@ class CatalogApiService {
         fallback: 'Failed to fetch artist top tracks.',
       );
     }
-    return decodeJsonObjectList(response.body)
-        .map(CatalogTrack.fromJson)
-        .toList(growable: false);
+    return decodeJsonObjectList(
+      response.body,
+    ).map(CatalogTrack.fromJson).toList(growable: false);
   }
 
   Future<CatalogTracksPage> getArtistAlbums({
@@ -128,11 +133,15 @@ class CatalogApiService {
     int limit = 20,
     String? cursor,
   }) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/tracks/artists/$artistId/albums')
-        .replace(queryParameters: <String, String>{
-      'limit': '$limit',
-      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-    });
+    final uri =
+        Uri.parse(
+          '${ApiConfig.baseUrl}/api/v1/tracks/artists/$artistId/albums',
+        ).replace(
+          queryParameters: <String, String>{
+            'limit': '$limit',
+            if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+          },
+        );
     final response = await _client.get(uri);
     final payload = decodeJsonObject(response.body);
     if (response.statusCode != 200) {
@@ -144,18 +153,23 @@ class CatalogApiService {
     }
     final items = (payload['items'] as List<dynamic>? ?? const <dynamic>[])
         .whereType<Map<String, dynamic>>()
-        .map((album) => CatalogTrack(
-              id: (album['id'] ?? '').toString(),
-              title: (album['title'] ?? '').toString(),
-              artist: (album['artist'] ?? '').toString(),
-              artistId: (album['artistId'] ?? '').toString(),
-              albumId: (album['id'] ?? '').toString(),
-              albumTitle: (album['title'] ?? '').toString(),
-              coverUrl: ApiConfig.resolveUrl(album['coverUrl']?.toString()),
-              audioUrl: '',
-            ))
+        .map(
+          (album) => CatalogTrack(
+            id: (album['id'] ?? '').toString(),
+            title: (album['title'] ?? '').toString(),
+            artist: (album['artist'] ?? '').toString(),
+            artistId: (album['artistId'] ?? '').toString(),
+            albumId: (album['id'] ?? '').toString(),
+            albumTitle: (album['title'] ?? '').toString(),
+            coverUrl: ApiConfig.resolveUrl(album['coverUrl']?.toString()),
+            audioUrl: '',
+          ),
+        )
         .toList(growable: false);
-    return CatalogTracksPage(items: items, nextCursor: payload['nextCursor'] as String?);
+    return CatalogTracksPage(
+      items: items,
+      nextCursor: payload['nextCursor'] as String?,
+    );
   }
 
   Future<SearchBrowsePayload> getSearchBrowse() async {
@@ -169,15 +183,20 @@ class CatalogApiService {
         fallback: 'Failed to fetch search browse payload.',
       );
     }
-    final discover = (payload['discoverCards'] as List<dynamic>? ?? const <dynamic>[])
-        .whereType<Map<String, dynamic>>()
-        .map(SearchBrowseCard.fromJson)
-        .toList(growable: false);
-    final categories = (payload['browseCategories'] as List<dynamic>? ?? const <dynamic>[])
-        .whereType<Map<String, dynamic>>()
-        .map(SearchBrowseCard.fromJson)
-        .toList(growable: false);
-    return SearchBrowsePayload(discoverCards: discover, browseCategories: categories);
+    final discover =
+        (payload['discoverCards'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .map(SearchBrowseCard.fromJson)
+            .toList(growable: false);
+    final categories =
+        (payload['browseCategories'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .map(SearchBrowseCard.fromJson)
+            .toList(growable: false);
+    return SearchBrowsePayload(
+      discoverCards: discover,
+      browseCategories: categories,
+    );
   }
 
   Future<List<SearchRecentItem>> getRecentSearches({int limit = 20}) async {
@@ -185,10 +204,15 @@ class CatalogApiService {
       '${ApiConfig.baseUrl}/api/v1/search/recent',
     ).replace(queryParameters: <String, String>{'limit': '$limit'});
     final response = await _client.get(uri);
-    final payload = decodeJsonObjectList(response.body);
     if (response.statusCode != 200) {
-      throw Exception('Failed to fetch recent searches.');
+      final payload = decodeJsonObject(response.body);
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to fetch recent searches.',
+      );
     }
+    final payload = decodeJsonObjectList(response.body);
     return payload.map(SearchRecentItem.fromJson).toList(growable: false);
   }
 
@@ -202,13 +226,17 @@ class CatalogApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/search/recent');
     final response = await _client.post(
       uri,
-      headers: const <String, String>{'Content-Type': 'application/json; charset=UTF-8'},
+      headers: const <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
       body: jsonEncode(<String, dynamic>{
         'type': type,
         'itemId': itemId,
         'title': title,
-        if (subtitle != null && subtitle.trim().isNotEmpty) 'subtitle': subtitle,
-        if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl,
+        if (subtitle != null && subtitle.trim().isNotEmpty)
+          'subtitle': subtitle,
+        if (imageUrl != null && imageUrl.trim().isNotEmpty)
+          'imageUrl': imageUrl,
       }),
     );
     if (response.statusCode != 200) {
@@ -222,7 +250,9 @@ class CatalogApiService {
   }
 
   Future<void> deleteRecentSearch(String recentId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/search/recent/$recentId');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/search/recent/$recentId',
+    );
     final response = await _client.delete(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);

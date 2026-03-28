@@ -440,35 +440,73 @@ class BottomNavigator extends StatelessWidget {
       builder: (context, playerVm, jamVm, _) {
         final playerState = playerVm.state;
         final jamSession = jamVm.state.session;
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            if (jamSession != null && jamSession.isActive)
-              _MiniJamBar(session: jamSession),
-            if (playerState.currentTrack != null)
-              _MiniPlayerBar(playerVm: playerVm),
-            NavigationBar(
-              selectedIndex: currentIndex,
-              onDestinationSelected: (index) {
-                onSelected(index);
-              },
-              destinations: const <NavigationDestination>[
-                NavigationDestination(
-                  icon: Icon(Icons.home_filled),
-                  label: 'Home',
+        return Container(
+          color: const Color(0xFF121212),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (jamSession != null && jamSession.isActive)
+                _MiniJamBar(session: jamSession),
+              if (playerState.currentTrack != null)
+                _MiniPlayerBar(playerVm: playerVm),
+              Theme(
+                data: Theme.of(context).copyWith(
+                  navigationBarTheme: NavigationBarThemeData(
+                    backgroundColor: Colors.transparent,
+                    surfaceTintColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    overlayColor: WidgetStateProperty.all(Colors.transparent),
+                    indicatorColor: Colors.transparent,
+                    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                      final isSelected = states.contains(WidgetState.selected);
+                      return TextStyle(
+                        color: isSelected
+                            ? SportifyColors.textPrimary
+                            : SportifyColors.textSecondary,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                        fontSize: 12,
+                      );
+                    }),
+                    iconTheme: WidgetStateProperty.resolveWith((states) {
+                      final isSelected = states.contains(WidgetState.selected);
+                      return IconThemeData(
+                        color: isSelected
+                            ? SportifyColors.textPrimary
+                            : SportifyColors.textSecondary,
+                      );
+                    }),
+                  ),
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.search),
-                  label: 'Search',
+                child: NavigationBar(
+                  selectedIndex: currentIndex,
+                  onDestinationSelected: (index) => onSelected(index),
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  surfaceTintColor: Colors.transparent,
+                  destinations: const <NavigationDestination>[
+                    NavigationDestination(
+                      icon: Icon(Icons.home_filled),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.search),
+                      label: 'Search',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.library_music_outlined),
+                      label: 'Your Library',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.add),
+                      label: 'Create',
+                    ),
+                  ],
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.library_music_outlined),
-                  label: 'Your Library',
-                ),
-                NavigationDestination(icon: Icon(Icons.add), label: 'Create'),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         );
       },
     );

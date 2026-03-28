@@ -13,20 +13,28 @@ class LibraryApiService {
       '${ApiConfig.baseUrl}/api/v1/library/tracks',
     ).replace(queryParameters: <String, String>{'limit': '$limit'});
     final response = await _client.get(uri);
-    final payload = decodeJsonObjectList(response.body);
     if (response.statusCode != 200) {
-      throw Exception('Failed to load saved tracks.');
+      final payload = decodeJsonObject(response.body);
+      throwApiException(
+        statusCode: response.statusCode,
+        payload: payload,
+        fallback: 'Failed to load saved tracks.',
+      );
     }
+    final payload = decodeJsonObjectList(response.body);
     return payload.map(LibraryTrack.fromJson).toList(growable: false);
   }
 
-  Future<CursorPage<LibraryAlbum>> getSavedAlbums({int limit = 20, String? cursor}) async {
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/api/v1/library/albums',
-    ).replace(queryParameters: <String, String>{
-      'limit': '$limit',
-      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-    });
+  Future<CursorPage<LibraryAlbum>> getSavedAlbums({
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/albums').replace(
+      queryParameters: <String, String>{
+        'limit': '$limit',
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      },
+    );
     final response = await _client.get(uri);
     final payload = decodeJsonObject(response.body);
     if (response.statusCode != 200) {
@@ -40,16 +48,23 @@ class LibraryApiService {
         .whereType<Map<String, dynamic>>()
         .map(LibraryAlbum.fromJson)
         .toList(growable: false);
-    return CursorPage(items: items, nextCursor: payload['nextCursor'] as String?);
+    return CursorPage(
+      items: items,
+      nextCursor: payload['nextCursor'] as String?,
+    );
   }
 
-  Future<CursorPage<LibraryArtist>> getFollowedArtists({int limit = 20, String? cursor}) async {
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/api/v1/library/artists',
-    ).replace(queryParameters: <String, String>{
-      'limit': '$limit',
-      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-    });
+  Future<CursorPage<LibraryArtist>> getFollowedArtists({
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/artists')
+        .replace(
+          queryParameters: <String, String>{
+            'limit': '$limit',
+            if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+          },
+        );
     final response = await _client.get(uri);
     final payload = decodeJsonObject(response.body);
     if (response.statusCode != 200) {
@@ -63,16 +78,23 @@ class LibraryApiService {
         .whereType<Map<String, dynamic>>()
         .map(LibraryArtist.fromJson)
         .toList(growable: false);
-    return CursorPage(items: items, nextCursor: payload['nextCursor'] as String?);
+    return CursorPage(
+      items: items,
+      nextCursor: payload['nextCursor'] as String?,
+    );
   }
 
-  Future<CursorPage<LibraryPlaylist>> getOwnedPlaylists({int limit = 20, String? cursor}) async {
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/api/v1/library/playlists',
-    ).replace(queryParameters: <String, String>{
-      'limit': '$limit',
-      if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
-    });
+  Future<CursorPage<LibraryPlaylist>> getOwnedPlaylists({
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/playlists')
+        .replace(
+          queryParameters: <String, String>{
+            'limit': '$limit',
+            if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+          },
+        );
     final response = await _client.get(uri);
     final payload = decodeJsonObject(response.body);
     if (response.statusCode != 200) {
@@ -86,11 +108,16 @@ class LibraryApiService {
         .whereType<Map<String, dynamic>>()
         .map(LibraryPlaylist.fromJson)
         .toList(growable: false);
-    return CursorPage(items: items, nextCursor: payload['nextCursor'] as String?);
+    return CursorPage(
+      items: items,
+      nextCursor: payload['nextCursor'] as String?,
+    );
   }
 
   Future<void> saveTrack(String trackId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/tracks/$trackId/save');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/tracks/$trackId/save',
+    );
     final response = await _client.post(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);
@@ -103,7 +130,9 @@ class LibraryApiService {
   }
 
   Future<void> unsaveTrack(String trackId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/tracks/$trackId/save');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/tracks/$trackId/save',
+    );
     final response = await _client.delete(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);
@@ -116,7 +145,9 @@ class LibraryApiService {
   }
 
   Future<void> saveAlbum(String albumId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/albums/$albumId/save');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/albums/$albumId/save',
+    );
     final response = await _client.post(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);
@@ -129,7 +160,9 @@ class LibraryApiService {
   }
 
   Future<void> unsaveAlbum(String albumId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/albums/$albumId/save');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/albums/$albumId/save',
+    );
     final response = await _client.delete(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);
@@ -142,7 +175,9 @@ class LibraryApiService {
   }
 
   Future<void> followArtist(String artistId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/artists/$artistId/follow');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/artists/$artistId/follow',
+    );
     final response = await _client.post(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);
@@ -155,7 +190,9 @@ class LibraryApiService {
   }
 
   Future<void> unfollowArtist(String artistId) async {
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/library/artists/$artistId/follow');
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/api/v1/library/artists/$artistId/follow',
+    );
     final response = await _client.delete(uri);
     if (response.statusCode != 200) {
       final payload = decodeJsonObject(response.body);

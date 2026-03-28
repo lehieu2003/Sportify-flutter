@@ -8,6 +8,7 @@ class SearchUiState {
     required this.isLoading,
     required this.items,
     required this.query,
+    required this.activeGenre,
     required this.nextCursor,
     required this.discoverCards,
     required this.browseCategories,
@@ -19,6 +20,7 @@ class SearchUiState {
     : isLoading = false,
       items = const <CatalogTrack>[],
       query = '',
+      activeGenre = null,
       nextCursor = null,
       discoverCards = const <SearchBrowseCard>[],
       browseCategories = const <SearchBrowseCard>[],
@@ -28,6 +30,7 @@ class SearchUiState {
   final bool isLoading;
   final List<CatalogTrack> items;
   final String query;
+  final String? activeGenre;
   final String? nextCursor;
   final List<SearchBrowseCard> discoverCards;
   final List<SearchBrowseCard> browseCategories;
@@ -38,6 +41,8 @@ class SearchUiState {
     bool? isLoading,
     List<CatalogTrack>? items,
     String? query,
+    String? activeGenre,
+    bool clearActiveGenre = false,
     String? nextCursor,
     List<SearchBrowseCard>? discoverCards,
     List<SearchBrowseCard>? browseCategories,
@@ -48,6 +53,7 @@ class SearchUiState {
       isLoading: isLoading ?? this.isLoading,
       items: items ?? this.items,
       query: query ?? this.query,
+      activeGenre: clearActiveGenre ? null : (activeGenre ?? this.activeGenre),
       nextCursor: nextCursor,
       discoverCards: discoverCards ?? this.discoverCards,
       browseCategories: browseCategories ?? this.browseCategories,
@@ -102,6 +108,7 @@ class SearchViewModel extends ChangeNotifier {
       _state = _state.copyWith(
         isLoading: false,
         query: '',
+        clearActiveGenre: true,
         items: const <CatalogTrack>[],
         nextCursor: null,
         errorMessage: null,
@@ -110,7 +117,12 @@ class SearchViewModel extends ChangeNotifier {
       await loadLanding();
       return;
     }
-    _state = _state.copyWith(isLoading: true, query: query, errorMessage: null);
+    _state = _state.copyWith(
+      isLoading: true,
+      query: query,
+      clearActiveGenre: true,
+      errorMessage: null,
+    );
     notifyListeners();
 
     try {
@@ -118,6 +130,7 @@ class SearchViewModel extends ChangeNotifier {
       _state = _state.copyWith(
         isLoading: false,
         items: page.items,
+        clearActiveGenre: true,
         nextCursor: page.nextCursor,
         errorMessage: null,
       );
@@ -125,6 +138,7 @@ class SearchViewModel extends ChangeNotifier {
       _state = _state.copyWith(
         isLoading: false,
         items: const <CatalogTrack>[],
+        clearActiveGenre: true,
         nextCursor: null,
         errorMessage: 'Failed to search tracks.',
       );
@@ -146,19 +160,18 @@ class SearchViewModel extends ChangeNotifier {
     _state = _state.copyWith(
       isLoading: true,
       query: normalized,
+      activeGenre: normalized,
       items: const <CatalogTrack>[],
       nextCursor: null,
       errorMessage: null,
     );
     notifyListeners();
     try {
-      final page = await _repository.searchTracks(
-        genre: normalized,
-        limit: 20,
-      );
+      final page = await _repository.searchTracks(genre: normalized, limit: 20);
       _state = _state.copyWith(
         isLoading: false,
         items: page.items,
+        activeGenre: normalized,
         nextCursor: page.nextCursor,
         errorMessage: null,
       );
@@ -166,6 +179,7 @@ class SearchViewModel extends ChangeNotifier {
       _state = _state.copyWith(
         isLoading: false,
         items: const <CatalogTrack>[],
+        activeGenre: normalized,
         nextCursor: null,
         errorMessage: 'Failed to search tracks.',
       );
@@ -174,7 +188,9 @@ class SearchViewModel extends ChangeNotifier {
   }
 
   Future<void> loadMore() async {
-    if (_state.isLoading || _state.nextCursor == null || _state.nextCursor!.isEmpty) {
+    if (_state.isLoading ||
+        _state.nextCursor == null ||
+        _state.nextCursor!.isEmpty) {
       return;
     }
     _state = _state.copyWith(isLoading: true, errorMessage: null);
@@ -182,7 +198,8 @@ class SearchViewModel extends ChangeNotifier {
 
     try {
       final page = await _repository.searchTracks(
-        query: _state.query,
+        query: _state.activeGenre == null ? _state.query : null,
+        genre: _state.activeGenre,
         limit: 20,
         cursor: _state.nextCursor,
       );
@@ -208,7 +225,9 @@ class SearchViewModel extends ChangeNotifier {
       await _repository.upsertRecentSearch(
         type: 'album',
         itemId: albumId,
-        title: track.albumTitle?.trim().isNotEmpty == true ? track.albumTitle! : track.title,
+        title: track.albumTitle?.trim().isNotEmpty == true
+            ? track.albumTitle!
+            : track.title,
         subtitle: track.artist,
         imageUrl: track.coverUrl,
       );
@@ -220,7 +239,9 @@ class SearchViewModel extends ChangeNotifier {
     try {
       await _repository.deleteRecentSearch(recentId);
       _state = _state.copyWith(
-        recentSearches: _state.recentSearches.where((it) => it.id != recentId).toList(growable: false),
+        recentSearches: _state.recentSearches
+            .where((it) => it.id != recentId)
+            .toList(growable: false),
       );
       notifyListeners();
     } catch (_) {}

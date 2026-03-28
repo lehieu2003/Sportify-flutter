@@ -37,6 +37,7 @@ class LibraryPlaylist {
     required this.description,
     required this.trackCount,
     required this.isPublic,
+    this.updatedAt = '',
     this.ownerName = '',
     this.memberRole = '',
     this.isOwner = false,
@@ -48,6 +49,7 @@ class LibraryPlaylist {
   final String description;
   final int trackCount;
   final bool isPublic;
+  final String updatedAt;
   final String ownerName;
   final String memberRole;
   final bool isOwner;
@@ -72,6 +74,7 @@ class LibraryPlaylist {
       description: (json['description'] ?? '').toString(),
       trackCount: parsedTrackCount,
       isPublic: parsedPublic,
+      updatedAt: (json['updatedAt'] ?? json['updated_at'] ?? '').toString(),
       ownerName: (json['ownerName'] ?? '').toString(),
       memberRole: (json['memberRole'] ?? '').toString(),
       isOwner: json['isOwner'] == true,
