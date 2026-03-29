@@ -6,11 +6,13 @@ class ArtworkBox extends StatelessWidget {
   const ArtworkBox({
     super.key,
     required this.seed,
+    this.imageUrl,
     this.size,
     this.borderRadius = 10,
   });
 
   final String seed;
+  final String? imageUrl;
   final double? size;
   final double borderRadius;
 
@@ -28,12 +30,32 @@ class ArtworkBox extends StatelessWidget {
           colors: palette,
         ),
       ),
-      child: const Center(
-        child: Icon(
-          Icons.music_note_rounded,
-          color: SportifyColors.textPrimary,
-          size: 22,
-        ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final normalizedImageUrl = (imageUrl ?? '').trim();
+    if (normalizedImageUrl.isNotEmpty) {
+      return Image.network(
+        normalizedImageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholderIcon(),
+      );
+    }
+
+    return _placeholderIcon();
+  }
+
+  Widget _placeholderIcon() {
+    return const Center(
+      child: Icon(
+        Icons.music_note_rounded,
+        color: SportifyColors.textPrimary,
+        size: 22,
       ),
     );
   }

@@ -168,6 +168,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             coverUrl: entry.value.coverUrl,
             audioUrl: entry.value.audioUrl,
             durationMs: entry.value.durationMs,
+            previewUrl: entry.value.previewUrl,
+            isPreviewOnly: entry.value.isPreviewOnly,
+            spotifyUrl: entry.value.spotifyUrl,
+            isPlayable: entry.value.isPlayable,
           ),
         )
         .toList(growable: false);
@@ -175,14 +179,20 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
   Future<void> _playTrack(int index) async {
     final track = _tracks[index];
-    if (track.audioUrl.trim().isEmpty) {
+    if (track.audioUrl.trim().isEmpty && track.previewUrl.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Track has no audio url.')));
+      ).showSnackBar(
+        const SnackBar(content: Text('Track is unavailable for playback.')),
+      );
       return;
     }
     final queue = _tracks
-        .where((item) => item.audioUrl.trim().isNotEmpty)
+        .where(
+          (item) =>
+              item.audioUrl.trim().isNotEmpty ||
+              item.previewUrl.trim().isNotEmpty,
+        )
         .map(
           (item) => PlayerTrack(
             id: item.trackId,
@@ -190,6 +200,8 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             artist: item.artist,
             audioUrl: item.audioUrl,
             coverUrl: item.coverUrl,
+            previewUrl: item.previewUrl,
+            isPreviewOnly: item.isPreviewOnly,
           ),
         )
         .toList(growable: false);
@@ -214,6 +226,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         title: track.title,
         artist: track.artist,
         audioUrl: track.audioUrl,
+        previewUrl: track.previewUrl,
         coverUrl: track.coverUrl,
       ),
     );
@@ -231,6 +244,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       coverUrl: track.coverUrl,
       audioUrl: track.audioUrl,
       durationMs: 0,
+      previewUrl: track.previewUrl,
+      isPreviewOnly: track.isPreviewOnly,
+      spotifyUrl: track.spotifyUrl,
+      isPlayable: track.isPlayable,
     );
     setState(() {
       _addingTrackIds.add(track.id);

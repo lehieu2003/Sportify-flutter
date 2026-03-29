@@ -26,6 +26,84 @@ class JamSessionScreen extends StatefulWidget {
 
 class _JamSessionScreenState extends State<JamSessionScreen>
     with WidgetsBindingObserver {
+  Future<void> _showSleepTimerSheet(PlayerViewModel playerVm) async {
+    final rootContext = context;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: SportifyColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        Widget timerOption({
+          required String label,
+          required Duration duration,
+        }) {
+          return ListTile(
+            title: Text(label),
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              playerVm.startSleepTimer(duration);
+              ScaffoldMessenger.of(
+                rootContext,
+              ).showSnackBar(SnackBar(content: Text('Timer set for $label.')));
+            },
+          );
+        }
+
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const SizedBox(height: SportifySpacing.sm),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: SportifyColors.textSecondary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: SportifySpacing.sm),
+              const ListTile(
+                title: Text(
+                  'Sleep timer',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              timerOption(
+                label: '5 minutes',
+                duration: const Duration(minutes: 5),
+              ),
+              timerOption(
+                label: '15 minutes',
+                duration: const Duration(minutes: 15),
+              ),
+              timerOption(
+                label: '30 minutes',
+                duration: const Duration(minutes: 30),
+              ),
+              timerOption(label: '1 hour', duration: const Duration(hours: 1)),
+              if (playerVm.hasSleepTimer)
+                ListTile(
+                  title: const Text(
+                    'Cancel timer',
+                    style: TextStyle(color: SportifyColors.error),
+                  ),
+                  onTap: () {
+                    playerVm.cancelSleepTimer();
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
+              const SizedBox(height: SportifySpacing.sm),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -265,7 +343,8 @@ class _JamSessionScreenState extends State<JamSessionScreen>
       final item = session.queue.items[i];
       final id = item.trackId.trim();
       final audioUrl = item.audioUrl.trim();
-      if (id.isEmpty || audioUrl.isEmpty) {
+      final previewUrl = item.previewUrl.trim();
+      if (id.isEmpty || (audioUrl.isEmpty && previewUrl.isEmpty)) {
         continue;
       }
       playable.add((
@@ -276,6 +355,8 @@ class _JamSessionScreenState extends State<JamSessionScreen>
           artist: item.artist,
           audioUrl: audioUrl,
           coverUrl: item.coverUrl,
+          previewUrl: previewUrl,
+          isPreviewOnly: audioUrl.isEmpty && previewUrl.isNotEmpty,
         ),
       ));
     }
@@ -328,8 +409,8 @@ class _JamSessionScreenState extends State<JamSessionScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<JamViewModel>(
-      builder: (context, vm, _) {
+    return Consumer2<JamViewModel, PlayerViewModel>(
+      builder: (context, vm, playerVm, _) {
         final state = vm.state;
         final session = state.session;
         if (state.isLoading && session == null) {
@@ -353,6 +434,13 @@ class _JamSessionScreenState extends State<JamSessionScreen>
         final activeParticipants = session.participants
             .where((item) => item.isActive)
             .toList(growable: false);
+
+        final repeatMode = playerVm.state.repeatMode;
+        final repeatIcon = switch (repeatMode) {
+          'one' => Icons.repeat_one,
+          _ => Icons.repeat,
+        };
+        final isHost = session.isHost;
 
         return Scaffold(
           backgroundColor: SportifyColors.background,
@@ -569,18 +657,28 @@ class _JamSessionScreenState extends State<JamSessionScreen>
                     SportifySpacing.md,
                   ),
                   child: Row(
-                    children: const <Widget>[
+                    children: <Widget>[
                       _JamBottomAction(
-                        icon: Icons.auto_awesome,
-                        label: 'Smart',
-                        active: true,
+                        icon: Icons.shuffle,
+                        label: 'Shuffle',
+                        active: playerVm.state.shuffleEnabled,
+                        onTap: isHost ? playerVm.toggleShuffle : null,
                       ),
-                      SizedBox(width: SportifySpacing.sm),
-                      _JamBottomAction(icon: Icons.repeat, label: 'Repeat'),
-                      SizedBox(width: SportifySpacing.sm),
+                      const SizedBox(width: SportifySpacing.sm),
+                      _JamBottomAction(
+                        icon: repeatIcon,
+                        label: 'Repeat',
+                        active: repeatMode != 'off',
+                        onTap: isHost ? playerVm.cycleRepeatMode : null,
+                      ),
+                      const SizedBox(width: SportifySpacing.sm),
                       _JamBottomAction(
                         icon: Icons.timer_outlined,
                         label: 'Timer',
+                        active: playerVm.hasSleepTimer,
+                        onTap: isHost
+                            ? () => _showSleepTimerSheet(playerVm)
+                            : null,
                       ),
                     ],
                   ),
@@ -599,41 +697,47 @@ class _JamBottomAction extends StatelessWidget {
     required this.icon,
     required this.label,
     this.active = false,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool active;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        height: 72,
-        decoration: BoxDecoration(
-          color: SportifyColors.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Icon(
-              icon,
-              color: active
-                  ? SportifyColors.primary
-                  : SportifyColors.textPrimary,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          height: 72,
+          decoration: BoxDecoration(
+            color: SportifyColors.surface,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(
+                icon,
                 color: active
                     ? SportifyColors.primary
                     : SportifyColors.textPrimary,
-                fontWeight: FontWeight.w600,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: active
+                      ? SportifyColors.primary
+                      : SportifyColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -6,6 +6,7 @@ class Track {
     required this.title,
     required this.subtitle,
     required this.thumbnailUrl,
+    this.latestTrackCoverUrl,
     required this.audioUrl,
     this.albumId,
     this.albumTitle,
@@ -17,6 +18,7 @@ class Track {
   final String title;
   final String subtitle;
   final String thumbnailUrl;
+  final String? latestTrackCoverUrl;
   final String audioUrl;
   final String? albumId;
   final String? albumTitle;
@@ -36,6 +38,9 @@ class Track {
       subtitle: artist.trim().isNotEmpty ? artist : subtitleFallback,
       thumbnailUrl: ApiConfig.resolveUrl(
         (json['thumbnailUrl'] ?? json['coverUrl'] ?? json['cover_url'])?.toString(),
+      ),
+      latestTrackCoverUrl: ApiConfig.resolveUrl(
+        (json['latestTrackCoverUrl'] ?? json['latest_track_cover_url'])?.toString(),
       ),
       audioUrl: ApiConfig.resolveUrl(
         (json['audioUrl'] ?? json['audio_url'])?.toString(),
@@ -57,6 +62,7 @@ class Track {
       'title': title,
       'subtitle': subtitle,
       'thumbnailUrl': thumbnailUrl,
+      'latestTrackCoverUrl': latestTrackCoverUrl,
       'audioUrl': audioUrl,
       'albumId': albumId,
       'albumTitle': albumTitle,

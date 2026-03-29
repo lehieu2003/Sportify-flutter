@@ -145,6 +145,10 @@ class PlaylistTrack {
     required this.coverUrl,
     required this.audioUrl,
     required this.durationMs,
+    this.previewUrl = '',
+    this.isPreviewOnly = false,
+    this.spotifyUrl = '',
+    this.isPlayable,
   });
 
   final String trackId;
@@ -154,6 +158,10 @@ class PlaylistTrack {
   final String coverUrl;
   final String audioUrl;
   final int durationMs;
+  final String previewUrl;
+  final bool isPreviewOnly;
+  final String spotifyUrl;
+  final bool? isPlayable;
 
   factory PlaylistTrack.fromJson(Map<String, dynamic> json) {
     final rawPosition = json['position'];
@@ -180,6 +188,14 @@ class PlaylistTrack {
         (json['audioUrl'] ?? json['audio_url'])?.toString(),
       ),
       durationMs: durationMs,
+      previewUrl: ApiConfig.resolveUrl(
+        (json['previewUrl'] ?? json['preview_url'])?.toString(),
+      ),
+      isPreviewOnly: json['isPreviewOnly'] == true || json['is_preview_only'] == true,
+      spotifyUrl: (json['spotifyUrl'] ?? json['spotify_url'] ?? '').toString(),
+      isPlayable: json['isPlayable'] is bool
+          ? json['isPlayable'] as bool
+          : (json['is_playable'] is bool ? json['is_playable'] as bool : null),
     );
   }
 }

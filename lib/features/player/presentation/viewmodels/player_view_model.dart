@@ -17,6 +17,8 @@ class PlayerTrack {
     required this.artist,
     required this.audioUrl,
     required this.coverUrl,
+    this.previewUrl = '',
+    this.isPreviewOnly = false,
   });
 
   final String id;
@@ -24,6 +26,10 @@ class PlayerTrack {
   final String artist;
   final String audioUrl;
   final String coverUrl;
+  final String previewUrl;
+  final bool isPreviewOnly;
+
+  String get playableUrl => audioUrl.trim().isNotEmpty ? audioUrl : previewUrl.trim();
 }
 
 class PlayerUiState {
@@ -161,11 +167,15 @@ class PlayerViewModel extends ChangeNotifier {
   Future<void>? _restoreFuture;
   bool _hasRestoredPlayback = false;
   Timer? _seekSyncDebounce;
+  Timer? _sleepTimer;
+  DateTime? _sleepTimerEndsAt;
   final Random _random = Random();
   final PlaybackActionCoordinator _playbackActionCoordinator =
       PlaybackActionCoordinator();
 
   PlayerUiState get state => _state;
+  bool get hasSleepTimer => _sleepTimer != null && _sleepTimerEndsAt != null;
+  DateTime? get sleepTimerEndsAt => _sleepTimerEndsAt;
 
   Future<void> restoreSession() async {
     if (_hasRestoredPlayback) {
@@ -218,7 +228,7 @@ class PlayerViewModel extends ChangeNotifier {
       final repeatMode = _parseRepeatMode(statePayload['repeatMode']);
 
       final sources = queue
-          .map((track) => AudioSource.uri(Uri.parse(track.audioUrl)))
+          .map((track) => AudioSource.uri(Uri.parse(track.playableUrl)))
           .toList(growable: false);
       await _audioPlayer.setAudioSources(sources, initialIndex: safeIndex);
       if (positionMs > 0) {
@@ -264,27 +274,41 @@ class PlayerViewModel extends ChangeNotifier {
     if (queue.isEmpty) return;
     final safeIndex = startIndex.clamp(0, queue.length - 1);
     final track = queue[safeIndex];
-    if (track.audioUrl.trim().isEmpty) {
-      _state = _state.copyWith(errorMessage: 'Track has no audio url.');
-      notifyListeners();
-      return;
-    }
-
-    _completedSent = false;
     try {
-      final sources = queue
-          .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
-          .toList(growable: false);
-      await _audioPlayer.setAudioSources(sources, initialIndex: safeIndex);
       _state = _state.copyWith(
         queue: queue,
         queueIndex: safeIndex,
         currentTrack: track,
+        isPlaying: false,
+        isBuffering: false,
         position: Duration.zero,
+        duration: Duration.zero,
         errorMessage: null,
       );
       notifyListeners();
 
+      if (track.playableUrl.isEmpty) {
+        await _audioPlayer.stop();
+        await _playbackRepository.setQueue(
+          trackIds: queue.map((item) => item.id).toList(growable: false),
+          currentIndex: safeIndex,
+        );
+        await _playbackRepository.updateState(
+          currentTrackId: track.id,
+          queueIndex: safeIndex,
+          isPlaying: false,
+          positionMs: 0,
+          shuffleEnabled: _state.shuffleEnabled,
+          repeatMode: _state.repeatMode,
+        );
+        return;
+      }
+
+      _completedSent = false;
+      final sources = queue
+          .map((item) => AudioSource.uri(Uri.parse(item.playableUrl)))
+          .toList(growable: false);
+      await _audioPlayer.setAudioSources(sources, initialIndex: safeIndex);
       await _audioPlayer.play();
       await _playbackRepository.setQueue(
         trackIds: queue.map((item) => item.id).toList(growable: false),
@@ -309,6 +333,13 @@ class PlayerViewModel extends ChangeNotifier {
   Future<void> togglePlayPause() async {
     await _waitForRestore();
     if (_state.currentTrack == null) return;
+    if (_state.currentTrack!.playableUrl.isEmpty) {
+      _state = _state.copyWith(
+        errorMessage: 'Track is unavailable for playback.',
+      );
+      notifyListeners();
+      return;
+    }
     try {
       if (_audioPlayer.playing) {
         await _audioPlayer.pause();
@@ -521,7 +552,7 @@ class PlayerViewModel extends ChangeNotifier {
 
       try {
         final sources = updatedQueue
-            .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+            .map((item) => AudioSource.uri(Uri.parse(item.playableUrl)))
             .toList(growable: false);
         await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
         await _audioPlayer.seek(Duration.zero, index: nextIndex);
@@ -603,7 +634,7 @@ class PlayerViewModel extends ChangeNotifier {
       try {
         final wasPlaying = _state.isPlaying;
         final sources = updatedQueue
-            .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+            .map((item) => AudioSource.uri(Uri.parse(item.playableUrl)))
             .toList(growable: false);
         await _audioPlayer.setAudioSources(sources, initialIndex: nextIndex);
         if (wasPlaying) {
@@ -653,8 +684,8 @@ class PlayerViewModel extends ChangeNotifier {
 
   Future<void> addToQueue(PlayerTrack track) async {
     await _waitForRestore();
-    if (track.audioUrl.trim().isEmpty) {
-      _state = _state.copyWith(errorMessage: 'Track has no audio url.');
+    if (track.playableUrl.isEmpty) {
+      _state = _state.copyWith(errorMessage: 'Track is unavailable for playback.');
       notifyListeners();
       return;
     }
@@ -674,7 +705,7 @@ class PlayerViewModel extends ChangeNotifier {
 
       try {
         final sources = updatedQueue
-            .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+            .map((item) => AudioSource.uri(Uri.parse(item.playableUrl)))
             .toList(growable: false);
         await _audioPlayer.setAudioSources(sources, initialIndex: currentIndex);
         await _audioPlayer.seek(snapshot.position, index: currentIndex);
@@ -754,6 +785,40 @@ class PlayerViewModel extends ChangeNotifier {
     } catch (_) {}
   }
 
+  Future<void> startSleepTimer(Duration duration) async {
+    _sleepTimer?.cancel();
+    _sleepTimerEndsAt = DateTime.now().add(duration);
+    _sleepTimer = Timer(duration, () async {
+      await _onSleepTimerElapsed();
+    });
+    notifyListeners();
+  }
+
+  void cancelSleepTimer() {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    _sleepTimerEndsAt = null;
+    notifyListeners();
+  }
+
+  Future<void> _onSleepTimerElapsed() async {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    _sleepTimerEndsAt = null;
+    try {
+      await _audioPlayer.pause();
+      _state = _state.copyWith(isPlaying: false, errorMessage: null);
+      notifyListeners();
+      await _playbackRepository.updateState(
+        isPlaying: false,
+        positionMs: _audioPlayer.position.inMilliseconds,
+        shuffleEnabled: _state.shuffleEnabled,
+        repeatMode: _state.repeatMode,
+      );
+    } catch (_) {}
+    notifyListeners();
+  }
+
   Future<void> _waitForRestore() async {
     final inFlight = _restoreFuture;
     if (inFlight != null) {
@@ -788,8 +853,13 @@ class PlayerViewModel extends ChangeNotifier {
       artist: (item['artist'] ?? 'Unknown artist').toString(),
       audioUrl: audioUrl,
       coverUrl: ApiConfig.resolveUrl(item['coverUrl']?.toString()),
+      previewUrl: ApiConfig.resolveUrl(
+        (item['previewUrl'] ?? item['preview_url'])?.toString(),
+      ),
+      isPreviewOnly:
+          item['isPreviewOnly'] == true || item['is_preview_only'] == true,
     );
-    if (track.id.isEmpty || track.audioUrl.isEmpty) {
+    if (track.id.isEmpty || track.playableUrl.isEmpty) {
       return null;
     }
     return track;
@@ -830,7 +900,7 @@ class PlayerViewModel extends ChangeNotifier {
         await _audioPlayer.stop();
       } else {
         final sources = snapshot.queue
-            .map((item) => AudioSource.uri(Uri.parse(item.audioUrl)))
+            .map((item) => AudioSource.uri(Uri.parse(item.playableUrl)))
             .toList(growable: false);
         await _audioPlayer.setAudioSources(
           sources,
@@ -1009,6 +1079,7 @@ class PlayerViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _sleepTimer?.cancel();
     _seekSyncDebounce?.cancel();
     _positionSub.cancel();
     _playerStateSub.cancel();

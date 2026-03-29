@@ -61,7 +61,11 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
 
   List<PlayerTrack> _buildQueue() {
     return _tracks
-        .where((track) => track.audioUrl.trim().isNotEmpty)
+        .where(
+          (track) =>
+              track.audioUrl.trim().isNotEmpty ||
+              track.previewUrl.trim().isNotEmpty,
+        )
         .map(
           (track) => PlayerTrack(
             id: track.id,
@@ -69,6 +73,8 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
             artist: track.artist,
             audioUrl: track.audioUrl,
             coverUrl: track.coverUrl,
+            previewUrl: track.previewUrl,
+            isPreviewOnly: track.isPreviewOnly,
           ),
         )
         .toList(growable: false);
@@ -118,6 +124,7 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
         artist: track.artist,
         artistId: track.artistId,
         audioUrl: track.audioUrl,
+        previewUrl: track.previewUrl,
         coverUrl: track.coverUrl,
       ),
     );

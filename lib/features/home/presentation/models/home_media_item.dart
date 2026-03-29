@@ -4,6 +4,7 @@ class HomeMediaItem {
     required this.title,
     required this.subtitle,
     required this.imageUrl,
+    this.trackImageUrl,
     this.audioUrl = '',
     this.albumId,
     this.trackCount,
@@ -14,6 +15,7 @@ class HomeMediaItem {
   final String title;
   final String subtitle;
   final String imageUrl;
+  final String? trackImageUrl;
   final String audioUrl;
   final String? albumId;
   final int? trackCount;

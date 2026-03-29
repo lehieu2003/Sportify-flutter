@@ -37,14 +37,21 @@ class _SearchScreenState extends State<SearchScreen> {
     List<CatalogTrack> items,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    if (track.audioUrl.trim().isEmpty) {
+    final playableUrl = track.audioUrl.trim().isNotEmpty
+        ? track.audioUrl
+        : track.previewUrl;
+    if (playableUrl.trim().isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Track has no audio URL.')),
+        const SnackBar(content: Text('Track is unavailable for playback.')),
       );
       return;
     }
     final queue = items
-        .where((item) => item.audioUrl.trim().isNotEmpty)
+        .where(
+          (item) =>
+              item.audioUrl.trim().isNotEmpty ||
+              item.previewUrl.trim().isNotEmpty,
+        )
         .map(
           (item) => PlayerTrack(
             id: item.id,
@@ -52,6 +59,8 @@ class _SearchScreenState extends State<SearchScreen> {
             artist: item.artist,
             audioUrl: item.audioUrl,
             coverUrl: item.coverUrl,
+            previewUrl: item.previewUrl,
+            isPreviewOnly: item.isPreviewOnly,
           ),
         )
         .toList(growable: false);
@@ -75,6 +84,7 @@ class _SearchScreenState extends State<SearchScreen> {
         artist: track.artist,
         artistId: track.artistId,
         audioUrl: track.audioUrl,
+        previewUrl: track.previewUrl,
         coverUrl: track.coverUrl,
       ),
     );

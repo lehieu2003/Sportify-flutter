@@ -10,6 +10,10 @@ class CatalogTrack {
     required this.albumTitle,
     required this.coverUrl,
     required this.audioUrl,
+    this.previewUrl = '',
+    this.isPreviewOnly = false,
+    this.spotifyUrl = '',
+    this.isPlayable,
   });
 
   final String id;
@@ -20,6 +24,10 @@ class CatalogTrack {
   final String? albumTitle;
   final String coverUrl;
   final String audioUrl;
+  final String previewUrl;
+  final bool isPreviewOnly;
+  final String spotifyUrl;
+  final bool? isPlayable;
 
   factory CatalogTrack.fromJson(Map<String, dynamic> json) {
     return CatalogTrack(
@@ -31,6 +39,12 @@ class CatalogTrack {
       albumTitle: json['albumTitle']?.toString(),
       coverUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
       audioUrl: ApiConfig.resolveUrl((json['audioUrl'] ?? json['audio_url'])?.toString()),
+      previewUrl: ApiConfig.resolveUrl((json['previewUrl'] ?? json['preview_url'])?.toString()),
+      isPreviewOnly: json['isPreviewOnly'] == true || json['is_preview_only'] == true,
+      spotifyUrl: (json['spotifyUrl'] ?? json['spotify_url'] ?? '').toString(),
+      isPlayable: json['isPlayable'] is bool
+          ? json['isPlayable'] as bool
+          : (json['is_playable'] is bool ? json['is_playable'] as bool : null),
     );
   }
 }

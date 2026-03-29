@@ -42,6 +42,10 @@ class JamQueueItem {
     required this.artist,
     required this.coverUrl,
     required this.audioUrl,
+    this.previewUrl = '',
+    this.isPreviewOnly = false,
+    this.spotifyUrl = '',
+    this.isPlayable,
   });
 
   final int position;
@@ -50,6 +54,10 @@ class JamQueueItem {
   final String artist;
   final String coverUrl;
   final String audioUrl;
+  final String previewUrl;
+  final bool isPreviewOnly;
+  final String spotifyUrl;
+  final bool? isPlayable;
 
   factory JamQueueItem.fromJson(Map<String, dynamic> json) {
     final rawPosition = json['position'];
@@ -69,6 +77,14 @@ class JamQueueItem {
       audioUrl: ApiConfig.resolveUrl(
         (json['audioUrl'] ?? json['audio_url'])?.toString(),
       ),
+      previewUrl: ApiConfig.resolveUrl(
+        (json['previewUrl'] ?? json['preview_url'])?.toString(),
+      ),
+      isPreviewOnly: json['isPreviewOnly'] == true || json['is_preview_only'] == true,
+      spotifyUrl: (json['spotifyUrl'] ?? json['spotify_url'] ?? '').toString(),
+      isPlayable: json['isPlayable'] is bool
+          ? json['isPlayable'] as bool
+          : (json['is_playable'] is bool ? json['is_playable'] as bool : null),
     );
   }
 }

@@ -79,7 +79,11 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
 
   Future<void> _playTopTrack(CatalogTrack track) async {
     final queue = _topTracks
-        .where((item) => item.audioUrl.trim().isNotEmpty)
+        .where(
+          (item) =>
+              item.audioUrl.trim().isNotEmpty ||
+              item.previewUrl.trim().isNotEmpty,
+        )
         .map(
           (item) => PlayerTrack(
             id: item.id,
@@ -87,6 +91,8 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
             artist: item.artist,
             audioUrl: item.audioUrl,
             coverUrl: item.coverUrl,
+            previewUrl: item.previewUrl,
+            isPreviewOnly: item.isPreviewOnly,
           ),
         )
         .toList(growable: false);
@@ -112,6 +118,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
         artist: track.artist,
         artistId: track.artistId,
         audioUrl: track.audioUrl,
+        previewUrl: track.previewUrl,
         coverUrl: track.coverUrl,
       ),
     );

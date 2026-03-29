@@ -30,7 +30,10 @@ class MusicCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: AspectRatio(
                   aspectRatio: 1,
-                  child: ArtworkBox(seed: item.title),
+                  child: ArtworkBox(
+                    seed: item.title,
+                    imageUrl: item.imageUrl,
+                  ),
                 ),
               ),
               const SizedBox(height: SportifySpacing.sm),

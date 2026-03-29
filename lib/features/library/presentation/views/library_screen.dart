@@ -234,14 +234,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
         final item = tabState.items[index];
         return ListTile(
           onTap: () async {
-            if (item.audioUrl.trim().isEmpty) {
+            if (item.audioUrl.trim().isEmpty && item.previewUrl.trim().isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Track has no audio url.')),
+                const SnackBar(content: Text('Track is unavailable for playback.')),
               );
               return;
             }
             final queue = tabState.items
-                .where((it) => it.audioUrl.trim().isNotEmpty)
+                .where(
+                  (it) =>
+                      it.audioUrl.trim().isNotEmpty ||
+                      it.previewUrl.trim().isNotEmpty,
+                )
                 .map(
                   (it) => PlayerTrack(
                     id: it.id,
@@ -249,6 +253,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     artist: it.artist,
                     audioUrl: it.audioUrl,
                     coverUrl: it.coverUrl,
+                    previewUrl: it.previewUrl,
+                    isPreviewOnly: it.isPreviewOnly,
                   ),
                 )
                 .toList(growable: false);

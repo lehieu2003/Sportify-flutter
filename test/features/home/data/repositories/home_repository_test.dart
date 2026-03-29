@@ -55,7 +55,12 @@ void main() {
         recentlyPlayed: <Map<String, dynamic>>[],
         madeForYou: <Map<String, dynamic>>[],
         trending: <Map<String, dynamic>>[
-          <String, dynamic>{'id': '1', 'title': 'Remote One', 'artist': 'Remote Artist'},
+          <String, dynamic>{
+            'id': '1',
+            'albumId': 'album-1',
+            'albumTitle': 'Remote One',
+            'artist': 'Remote Artist',
+          },
         ],
         newReleases: <Map<String, dynamic>>[],
         genres: <Map<String, dynamic>>[],

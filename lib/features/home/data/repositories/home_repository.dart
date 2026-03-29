@@ -88,6 +88,9 @@ class HomeRepository implements HomeTracksRepository {
       title: title.trim().isNotEmpty ? title : 'Untitled track',
       subtitle: (json['artist'] ?? json['artist_name'] ?? 'Unknown artist').toString(),
       thumbnailUrl: ApiConfig.resolveUrl((json['coverUrl'] ?? json['cover_url'])?.toString()),
+      latestTrackCoverUrl: ApiConfig.resolveUrl(
+        (json['latestTrackCoverUrl'] ?? json['latest_track_cover_url'])?.toString(),
+      ),
       audioUrl: ApiConfig.resolveUrl((json['audioUrl'] ?? json['audio_url'])?.toString()),
       albumId: (json['albumId'] ?? json['album_id'])?.toString(),
       albumTitle: albumTitle.trim().isEmpty ? null : albumTitle,

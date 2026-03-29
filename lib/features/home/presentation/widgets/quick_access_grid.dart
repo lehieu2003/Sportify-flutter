@@ -45,6 +45,7 @@ class QuickAccessGrid extends StatelessWidget {
                       ),
                       child: ArtworkBox(
                         seed: item.title,
+                        imageUrl: item.imageUrl,
                         size: 56,
                         borderRadius: 0,
                       ),

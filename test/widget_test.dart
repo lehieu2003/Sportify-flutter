@@ -12,19 +12,54 @@ class _FakeHomeRepository implements HomeTracksRepository {
   Stream<HomeFeed> watchHomeFeed() async* {
     yield const HomeFeed(
       quickAccess: <Track>[
-        Track(id: '1', title: 'Liked Songs', subtitle: 'Library', thumbnailUrl: '', audioUrl: ''),
+        Track(
+          id: '1',
+          title: 'Liked Songs',
+          subtitle: 'Library',
+          thumbnailUrl: '',
+          audioUrl: '',
+          albumId: 'album-1',
+        ),
       ],
       recentlyPlayed: <Track>[
-        Track(id: '2', title: 'Recently Played', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
+        Track(
+          id: '2',
+          title: 'Recently Played',
+          subtitle: 'Artist',
+          thumbnailUrl: '',
+          audioUrl: '',
+          albumId: 'album-2',
+        ),
       ],
       madeForYou: <Track>[
-        Track(id: '3', title: 'Made For You', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
+        Track(
+          id: '3',
+          title: 'Made For You',
+          subtitle: 'Artist',
+          thumbnailUrl: '',
+          audioUrl: '',
+          albumId: 'album-3',
+        ),
       ],
       trending: <Track>[
-        Track(id: '4', title: 'Trending', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
+        Track(
+          id: '4',
+          title: 'Trending',
+          subtitle: 'Artist',
+          thumbnailUrl: '',
+          audioUrl: '',
+          albumId: 'album-4',
+        ),
       ],
       newReleases: <Track>[
-        Track(id: '5', title: 'New', subtitle: 'Artist', thumbnailUrl: '', audioUrl: ''),
+        Track(
+          id: '5',
+          title: 'New',
+          subtitle: 'Artist',
+          thumbnailUrl: '',
+          audioUrl: '',
+          albumId: 'album-5',
+        ),
       ],
       genres: <Track>[
         Track(id: '6', title: 'Pop', subtitle: '10 tracks', thumbnailUrl: '', audioUrl: ''),

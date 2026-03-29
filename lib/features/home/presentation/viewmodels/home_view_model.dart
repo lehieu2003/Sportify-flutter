@@ -70,11 +70,16 @@ class HomeViewModel extends ChangeNotifier {
 
   HomeMediaItem _toItem(Track track) {
     final albumId = track.albumId?.trim();
+    final trackImageUrl = track.latestTrackCoverUrl?.trim();
+    final resolvedImageUrl = (trackImageUrl != null && trackImageUrl.isNotEmpty)
+        ? trackImageUrl
+        : track.thumbnailUrl;
     return HomeMediaItem(
       id: albumId != null && albumId.isNotEmpty ? albumId : track.id,
       title: track.title,
       subtitle: track.subtitle,
-      imageUrl: track.thumbnailUrl,
+      imageUrl: resolvedImageUrl,
+      trackImageUrl: trackImageUrl,
       audioUrl: track.audioUrl,
       albumId: albumId,
       trackCount: track.trackCount,

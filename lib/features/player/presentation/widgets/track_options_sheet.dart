@@ -16,6 +16,7 @@ class TrackOptionsData {
     required this.title,
     required this.artist,
     required this.audioUrl,
+    this.previewUrl = '',
     this.coverUrl = '',
     this.artistId,
   });
@@ -24,6 +25,7 @@ class TrackOptionsData {
   final String title;
   final String artist;
   final String audioUrl;
+  final String previewUrl;
   final String coverUrl;
   final String? artistId;
 }
@@ -222,6 +224,9 @@ Future<void> _addToQueue(BuildContext context, TrackOptionsData track) async {
         artist: track.artist,
         audioUrl: track.audioUrl,
         coverUrl: track.coverUrl,
+        previewUrl: track.previewUrl,
+        isPreviewOnly:
+            track.audioUrl.trim().isEmpty && track.previewUrl.trim().isNotEmpty,
       ),
     );
     if (!context.mounted) return;
